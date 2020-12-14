@@ -171,7 +171,8 @@
 ;;
 ;;  
 
-;; This bit of code is used to convert signed integers into unsigned integers.
+;; This bit of code is used to convert signed integers into unsigned integers.  I found this
+;; at https://www.lispforum.com/viewtopic.php?t=873.
 (defparameter *bitwidth* 16)
 (defparameter *unsigned-mask* (1- (ash 1 *bitwidth*)))
 
