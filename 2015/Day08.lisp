@@ -30,16 +30,6 @@
 (defun ws-p (c)
   (member c *whitespace*))
 
-(with-open-file (s "/home/rich/quicklisp/local-projects/rich/advent/2015/matchsticks.txt"
-			    :element-type 'unsigned-byte)
-  (dotimes (i 10)
-    (let ((c (read-byte s t)))
-      (if (not (ws-p c))
-	  (format t "~%>~x<" c)))))
-
-
-(map 'string #'(lambda (c) (print c)) "byc\x9dyxuafof\\\xa6uf\\axfozomj\\olh\x6a")
-
 (defun count-bytes (file)
   (with-open-file (s file
 		     :element-type 'unsigned-byte)
