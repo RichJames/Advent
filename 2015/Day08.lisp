@@ -38,6 +38,13 @@
 	  :unless (ws-p c)
 	    :collect c)))
 
+(defun count-all-bytes (file)
+  (with-open-file (s file
+		     :element-type 'unsigned-byte)
+    (loop :for c = (read-byte s nil nil)
+	  :while c
+	  :collect c)))
+
 (defun count-chars (char-list &key (char-count 0) (escape nil) (hex-seq nil) (hex-chars nil))
   (let ((c (car char-list))
 	(cdr-list (cdr char-list)))
@@ -62,3 +69,47 @@
 (defun tally (file)
   (let ((bytes-list (count-bytes file)))
     (- (length bytes-list) (count-chars bytes-list))))
+
+;;; Part 2
+;;;
+;;;  Given a string of characters, encode them in a new string.  For example,
+;;;    - ""            --> "\"\""
+;;;    - "abc"         --> "\"abc\""
+;;;    - "aaa\"aaa"    --> "\"aaa\\\"aaa\""
+;;;    - "\x27"        --> "\"\\x27\""
+;;;
+;;;  Basically, inside of quotes, insert the string of charcters, but use \ to
+;;;  escape quotes and backslashes.
+;;;
+;;;  The task is to find the total number of characters needed to encode the new
+;;;  string minus the number of characters of the code in each original string
+;;;  literal.
+;;;
+;;;  For example, with the strings above, this would be
+;;;   (6 + 9 + 16 + 11 = 42) minus 23 (as we computed in part 1.)
+;;;
+;;;  Note, every character string will be surrounded by a pair of
+;;;  "\"<encoded string>\"".  Another way to look at it:
+;;;   - Start the string with "
+;;;   - If the source string has a quote, insert \" in the new string
+;;;   - If the source string has a \, insert \\ in the new string.
+;;;   - Finish the string with ".
+;;;  This can be done character-by-character while walking the source string.
+
+(defun count-encoded-chars (char-list &key (char-count 0))
+  (let ((c (car char-list))
+	(cdr-list (cdr char-list)))
+    (cond ((null c) char-count)
+	  ((or (eq c 34)
+	       (eq c 92)
+	       (eq c 10)) (count-encoded-chars cdr-list :char-count (+ char-count 2)))
+	  (t (count-encoded-chars cdr-list :char-count (1+ char-count))))))
+
+(defun tally2 (file)
+  (let* ((char-count (length (count-bytes file)))
+	 (encoded-count (count-encoded-chars (count-all-bytes file)))
+	 (tally (- encoded-count char-count)))
+    (format t "~%encoded-count = ~d, char-count = ~d, tally = ~d"
+	    encoded-count
+	    char-count
+	    tally)))
