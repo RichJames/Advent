@@ -16,64 +16,47 @@
 - must contain two doubled pairs (not overlapping)
 - increment up to find the next conforming password
 |#
+ 
+(defparameter *chars-not-allowed* '(105 108 111))
 
-(defun increment (char)
-  (let ((char-num (char-code char)))
-    (cond ((= char-num 122) #\a)
-          ((or (= char-num 104)
-               (= char-num 107)
-               (= char-num 110)) (code-char (+ char-num 2)))
-          (t (code-char (1+ char-num))))))
+(defun passw->list (password)
+  (mapcar #'char-code (coerce password 'list)))
 
-(defun incr-string (str)
-  (loop :with next-c = #\a
-        :for c :across (reverse str)
-        :if (equal next-c #\a)
-          :do (setf next-c (increment c)) :and
-          :collect next-c :into results
-        :else
-          :collect c :into results
-        :finally (return (coerce (reverse results) 'string))))
+(defun list->passw (lst)
+  (coerce (mapcar #'code-char lst) 'string))
 
-;; Predicate to test if string contains 'i', 'o' or 'l'. Our increment logic won't
-;; introduce these into a string, but they could already exist in a string we
-;; were given.
-(defun valid-chars-p (string)
-  (not (or (find #\i string)
-           (find #\o string)
-           (find #\l string))))
+(defun increment (char-num)
+  (cond ((= char-num 122) 97)
+        ((member (1+ char-num) *chars-not-allowed*) (+ char-num 2))
+        (t (1+ char-num))))
 
-;; Predicate to test if string contains at least one straight of 3 or more characters.
-(defun has-straight-p (string)
-  (cond ((< (length string) 3) nil)
-        ((and (= (- (char-code (char string 1))
-                    (char-code (char string 0)))
-                 1)
-              (= (- (char-code (char string 2))
-                    (char-code (char string 1)))
-                 1)) t)
-        (t (has-straight-p (subseq string 1)))))
+(defun incr-list (lst)
+  (reverse (incr-list-helper (reverse lst))))
 
-;; Predicate to test if string contains at least two pairs that are not overlapping.
-(defun has-2-pairs-p (string)
-  (has-pairs-p string nil))
+(defun incr-list-helper (lst)
+  (cond ((null lst) nil)
+        ((= (car lst) 122) (append (list 97) (incr-list-helper (cdr lst))))
+        (t (append (list (increment (car lst))) (cdr lst)))))
 
-;; Helper function for finding two pairs
-(defun has-pairs-p (string &optional (found-one nil))
-  (cond ((< (length string) 2) nil)
-        ((and found-one
-              (equal (char string 0)
-                     (char string 1))) t)
-        ((equal (char string 0)
-                (char string 1)) (has-pairs-p (subseq string 2) t))
-        (found-one (has-pairs-p (subseq string 1) t))
-        (t (has-pairs-p (subseq string 1)))))
+(defun valid-chars-p (lst)
+  (not (intersection lst *chars-not-allowed*)))
 
-;; Next password function.  This function has a chance of running into an infinite loop.
-;; Some simple validation (e.g. at least 5 characters long) should prevent that.
+(defun has-straight-p (lst)
+  (cond ((< (length lst) 3) nil)
+        ((and (= (- (third lst) (second lst)) 1)
+              (= (- (second lst) (first lst)) 1)) t)
+        (t (has-straight-p (cdr lst)))))
+
+(defun has-pairs-p (lst &optional (found-one nil))
+  (cond ((< (length lst) 2) nil)
+        ((and found-one (equal (first lst) (second lst))) t)
+        ((equal (first lst) (second lst)) (has-pairs-p (cddr lst) t))
+        (found-one (has-pairs-p (cdr lst) t))
+        (t (has-pairs-p (cdr lst)))))
+
 (defun next-password (password)
-  (loop :for new-pass = (incr-string password) :then (incr-string new-pass)
+  (loop :for new-pass = (incr-list (passw->list password)) :then (incr-list new-pass)
         :until (and (valid-chars-p new-pass)
                     (has-straight-p new-pass)
-                    (has-2-pairs-p new-pass))
-        :finally (return new-pass)))
+                    (has-pairs-p new-pass))
+        :finally (return (list->passw new-pass))))
