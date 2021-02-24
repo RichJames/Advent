@@ -1,0 +1,22 @@
+[
+    "green",
+    [
+        {
+            "e":"green",
+            "a":77,
+            "d":
+            {
+                "c":"violet",
+                "a":"yellow",
+                "b":"violet"
+            },
+            "c":"yellow",
+            "h":"red",
+            "b":144,
+            "g":"red",
+            "f":"orange",
+            "i":"orange"
+        },
+        49
+    ]
+]
