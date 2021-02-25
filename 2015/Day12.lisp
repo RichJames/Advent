@@ -21,38 +21,10 @@
   (reduce #'+ (mapcar #'parse-integer numbers)))
 
 ;;; Part 2
-;;;  Ignore any object (and all of its children) which has any property with the
-;;;  value "red".  Do this only for objects ({...}), not arrays ([...]).
-
-;;; Use regex-replace-all to replace all objects with "red" with just "red" and
-;;; iterate calls to regex-replace-all until the string is no longer changed.
-;;; Then do the part1 search and sum again.
-
-(defun remove-red (input)
-  (with-open-file (stream input)
-    (let ((json-text (read-line stream nil nil)))
-      (regex-replace-all "\{[^\{\}]*\"red\"[^\{\}]*\}" json-text "\"red\""))))
-
-(defun get-part2-numbers ()
-  (with-open-file (stream "~/quicklisp/local-projects/rich/advent/2015/Day12.json")
-    (let ((json-text (read-line stream nil nil)))
-      (all-matches-as-strings "\-?\\d+" (remove-all-red json-text)))))
-
-(defun remove-all-red (input)
-  (let ((new-string nil)
-        (changed nil))
-    (loop :do (setf (values new-string changed) (remove-red input))
-          :while changed
-          :do (setf input new-string)
-          :finally (return new-string))))
 
 (defparameter *json-input* "~/quicklisp/local-projects/rich/advent/2015/Day12.json")
-(defparameter *test-input* "~/quicklisp/local-projects/rich/advent/2015/sample2.json")
-
-(defun get-part2-numbers (file)
-  (with-open-file (stream file)
-    (let ((json-text (read-line stream nil nil)))
-      (remove-red json-text))))
+(defparameter *test-input2* "~/quicklisp/local-projects/rich/advent/2015/sample2.json")
+(defparameter *test-input3* "~/quicklisp/local-projects/rich/advent/2015/sample3.json")
 
 ;; Json-decode turns json arrays ([..]) into lists.  It turns json objects ({..})
 ;; into JSON-OBJECTS.
@@ -64,30 +36,60 @@
 
 ;; object members can be a nested list of lists
 
+(defun json-obj-p (object)
+  (equal 'json-object (type-of object)))
+
 (defun sum-arrays (arr)
   (cond ((null arr) 0)
-        ((listp arr) (+ (sum-arrays (car arr)) (sum-arrays (cdr arr))))
         ((numberp arr) arr)
-        ((equal 'json-object (type-of arr)) (sum-object arr))
+        ((listp arr) (+ (sum-arrays (car arr)) (sum-arrays (cdr arr))))
+        ((json-obj-p arr) (sum-object arr))
         (t 0)))
 
 (defun sum-object (object)
-  (multiple-value-bind (sum red-found) (sum-object-members object)
-    (if red-found
-        0
-        sum)))
+  (let ((members (json-object-members object)))
+    (multiple-value-bind (sum red-found) (sum-object-members members)
+      (if red-found
+          0
+          sum))))
 
 (defun sum-object-members (lst &optional (red-found nil))
-  (cond (red-found (values 0 t))
-        ((null lst) (values 0 red-found))
-        ((listp lst) (multiple-value-bind (sum1 red1) (sum-object-members (car lst) red-found)
-                       (multiple-value-bind (sum2 red2) (sum-object-members (cdr lst) red-found)
-                         (if (or red1 red2)
-                             (values 0 t)
-                             (values (+ sum1 sum2) nil)))))
+  (cond ((null lst) (values 0 red-found))
+        ((or red-found (equal lst "red")) (values 0 t))
         ((numberp lst) (values lst red-found))
-        ((equal 'json-object (type-of lst)) (let ((members (json-object-members lst)))
-                                              (multiple-value-bind (sum red) (sum-object-members members red-found)
-                                                (values sum red))))
-        ((and (stringp lst) (string= lst "red")) (values 0 t))
-        (t (values 0 red-found))))
+        ((atom lst) (values 0 red-found))
+
+        ((listp (first lst)) (multiple-value-bind (sum1 red1) (sum-object-members (car lst))
+                               (multiple-value-bind (sum2 red2) (sum-object-members (cdr lst))
+                                 (values (+ sum1 sum2) (or red1 red2)))))
+
+        ((listp (second lst)) (multiple-value-bind (sum red) (sum-object-members (first lst) red-found)
+                                (values (+ sum (sum-arrays (second lst))) red)))
+
+        ((json-obj-p (second lst)) (let ((members (json-object-members (second lst))))
+                                     (multiple-value-bind (sum1 red1) (sum-object-members (first lst) red-found)
+                                       (multiple-value-bind (sum2 red2) (sum-object-members members red-found)
+                                         (values (+ sum1 sum2) (or red1 red2))))))
+
+        ((listp lst) (multiple-value-bind (sum1 red1) (sum-object-members (first lst) red-found)
+                       (multiple-value-bind (sum2 red2) (sum-object-members (second lst) red-found)
+                         (values (+ sum1 sum2) (or red1 red2)))))))
+
+;; Mimicing an algorithm posted on Reddit
+(defun sumjson (object)
+  (cond ((numberp object) object)
+        ((json-obj-p object) (sumjson-dict object))
+        ((listp object) (sumjson-list object))
+        (t 0)))
+
+(defun sumjson-dict (dict)
+  (let ((dict-members (json-object-members dict)))
+    (loop :for v :in dict-members
+          :if (member "red" v :test 'equal)
+            :return 0
+          :sum (sumjson v))))
+
+(defun sumjson-list (lst)
+  (loop :for v :in lst
+        :sum (sumjson v)))
+
