@@ -34,10 +34,14 @@
     (let ((json-text (read-line stream nil nil)))
       (json-decode json-text))))
 
-;; object members can be a nested list of lists
-
 (defun json-obj-p (object)
   (equal 'json-object (type-of object)))
+
+;; My approach here does not produce the correct answer.  This is because I understood
+;; the rules to be that nested objects affect the entire set of objects in the nested set.
+;; (e.g. {"foo":5, "bar":{"red":3}} I thought should return 0.)  As it turns out, the
+;; rules mean to ignore only the object that directly contains "red".  Therefore, my
+;; example should actually result in 5.
 
 (defun sum-arrays (arr)
   (cond ((null arr) 0)
@@ -75,7 +79,14 @@
                        (multiple-value-bind (sum2 red2) (sum-object-members (second lst) red-found)
                          (values (+ sum1 sum2) (or red1 red2)))))))
 
+(sum-arrays (create-json-object *json-input*))
+
 ;; Mimicing an algorithm posted on Reddit
+
+;; This solution does produce the correct answer. And it demonstrated to me what the
+;; intent of the instructions were. It's hard to solve a problem with the rules are
+;; not clearly stated.
+
 (defun sumjson (object)
   (cond ((numberp object) object)
         ((json-obj-p object) (sumjson-dict object))
@@ -93,3 +104,4 @@
   (loop :for v :in lst
         :sum (sumjson v)))
 
+(sumjson (create-json-object *json-input*))
