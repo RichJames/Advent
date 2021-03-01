@@ -15,7 +15,16 @@
 ;; The MFCSAM result:
 (defparameter *mfcsam-result* '(3 7 2 3 0 0 5 3 2 1))
 
-
+(defun get-attribute (attribute data)
+  (let* ((attr-length (+ (length attribute) 2))
+         (attr-pos (search attribute data)))
+    (if attr-pos
+        (let* ((snippet (subseq data (+ attr-pos attr-length)))
+               (comma-pos (position #\, snippet)))
+          (if comma-pos
+              (parse-integer (subseq snippet 0 comma-pos))
+              (parse-integer snippet)))
+        '*)))
 
 (defun parse-input (data)
   (let ((attributes '("children" "cats" "samoyeds" "pomeranians" "akitas"
