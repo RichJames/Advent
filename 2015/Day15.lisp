@@ -14,33 +14,6 @@ Candy: capacity -1, durability 0, flavor 4, texture 0, calories 1
 Chocolate: capacity 0, durability 0, flavor -2, texture 2, calories 8
 |#
 
-;; Maybe won't use a class for this.
-(defclass ingredient ()
-  ((name         :initarg :name         :accessor name)
-   (capacity     :initarg :capacity     :accessor capacity)
-   (durability   :initarg :durability   :accessor durability)
-   (flavor       :initarg :flavor       :accessor flavor)
-   (texture      :initarg :texture      :accessor texture)
-   (calories     :initarg :calories     :accessor calories)))
-
-(defun create-ingredient (name capacity durability flavor texture calories)
-  (make-instance 'ingredient
-                 :name name
-                 :capacity capacity
-                 :durability durability
-                 :flavor flavor
-                 :texture texture
-                 :calories calories))
-
-(defparameter *test-ingredient* (create-ingredient "Sugar" 3 0 0 -3 2))
-
-(defun calc-ingredient (ingredient quantity)
-  (with-slots (capacity durability flavor texture) ingredient
-    (list (* capacity quantity) (* durability quantity) (* flavor quantity) (* texture quantity))))
-
-;; Here's a list approach.  We have so few ingredients, I think I could manage this efficiently
-;; enough just using lists.
-
 (defparameter *ingredients* '(("Sugar"      3 0  0 -3 2)
                               ("Sprinkles" -3 3  0  0 9)
                               ("Candy"     -1 0  4  0 1)
