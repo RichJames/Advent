@@ -35,3 +35,14 @@
     (length found-combos)))
 
 
+;; Part 2
+
+;; Find the smallest set of containers that can hold 150 liters.  How many sets of
+;; that many containers are there?
+
+(defun find-part2-combos (set sum)
+  (let ((found-combos (make-array 10 :fill-pointer 0 :adjustable t)))
+    (subsetSum set sum found-combos)
+    (let ((sorted-lengths (sort (loop :for set :across found-combos
+                                      :collect (length set)) #'<)))
+      (count (car sorted-lengths) sorted-lengths))))
