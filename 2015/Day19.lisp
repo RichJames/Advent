@@ -7,10 +7,33 @@
 
 (in-package #:Day19)
 
+(defparameter *calibration-molecules* (make-hash-table :test 'equal))
+
 (defparameter *test-molecule* "HOH")
 (defparameter *test-replacements* '(("H" . "HO") ("H" . "OH") ("O" . "HH")))
 
-(defparameter *calibration-molecules* (make-hash-table :test 'equal))
+(defparameter *molecule* nil)
+(defparameter *replacements* nil)
+
+(defparameter *input-data* "~/quicklisp/local-projects/rich/advent/2015/Day19.txt")
+
+(defun load-replacement (string)
+  (let* ((delimiter    " => ")
+         (delim-start  (search delimiter string))
+         (to-find      (subseq string 0 delim-start))
+         (replace-with (subseq string (+ delim-start (length delimiter)))))
+    (setf *replacements* (append *replacements* (cons (cons to-find replace-with) nil)))))
+
+(defun load-input (file)
+  (setf *molecule* nil)
+  (setf *replacements* nil)
+  (with-open-file (stream file)
+    (loop :for line = (read-line stream nil nil)
+          :while line
+          :if (equal line "")
+            :do (setf *molecule* (read-line stream nil nil))
+          :else
+            :do (load-replacement line))))
 
 (defun replace-in-string (element string position)
   (let* ((length-to-replace (length (car element)))
@@ -33,4 +56,11 @@
 
 (defun test-calibration ()
   (clrhash *calibration-molecules*)
-  (calibrate-molecule *test-molecule* *test-replacements*))
+  (calibrate-molecule *test-molecule* *test-replacements*)
+  (hash-table-count *calibration-molecules*))
+
+(defun calibrate ()
+  (clrhash *calibration-molecules*)
+  (load-input *input-data*)
+  (calibrate-molecule *molecule* *replacements*)
+  (hash-table-count *calibration-molecules*))
