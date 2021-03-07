@@ -70,6 +70,14 @@
 ;; Given an input molecule of "e", what are the fewest steps needed to create the medicine
 ;; molecule (aka *molecule*)?
 
+;; My approach is to deconstruct the final module back to "e". I sort the replacements so
+;; that the longest ones are sorted first, then walk that list attempting to reduce those
+;; longest strings before the shorter ones.
+
+;; This does work and it finds the fewest steps, but I am not convinced this *had* to work.
+;; Could replacing a shorter string initially have led to being able to remove one or more
+;; longer strings later?
+
 (defun replace-in-string (seq replace-with string position)
   (let* ((length-to-replace (length seq))
          (first             (subseq string 0 position))
@@ -94,10 +102,6 @@
                   :if new-string
                     :do (progn
                           (setf reduction new-string)
-                          (incf steps)
-                          (loop :for new-string = (deconstruct reduction element)
-                                :while new-string
-                                :do (progn
-                                      (setf reduction new-string)
-                                      (incf steps)))))
+                          (incf steps))
+                  :until new-string)
         :finally (return (values reduction steps))))
