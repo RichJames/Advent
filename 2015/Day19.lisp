@@ -64,3 +64,40 @@
   (load-input *input-data*)
   (calibrate-molecule *molecule* *replacements*)
   (hash-table-count *calibration-molecules*))
+
+;; Part2
+
+;; Given an input molecule of "e", what are the fewest steps needed to create the medicine
+;; molecule (aka *molecule*)?
+
+(defun replace-in-string (seq replace-with string position)
+  (let* ((length-to-replace (length seq))
+         (first             (subseq string 0 position))
+         (last              (subseq string (+ position length-to-replace))))
+    (concatenate 'string first replace-with last)))
+
+(defun deconstruct (string element)
+  (let ((position (search (cdr element) string :test 'equal)))
+    (if position
+        (replace-in-string (cdr element) (car element) string position)
+        nil)))
+
+(defun total-deconstruct ()
+  (loop :with reduction = *molecule*
+        :with steps = 0
+        :with sorted-replacements = (reverse (sort *replacements* #'(lambda (x y)
+                                                                      (< (length x) (length y)))
+                                                   :key 'cdr))
+        :while (not (string= reduction "e"))
+        :do (loop :for element :in sorted-replacements
+                  :for new-string = (deconstruct reduction element)
+                  :if new-string
+                    :do (progn
+                          (setf reduction new-string)
+                          (incf steps)
+                          (loop :for new-string = (deconstruct reduction element)
+                                :while new-string
+                                :do (progn
+                                      (setf reduction new-string)
+                                      (incf steps)))))
+        :finally (return (values reduction steps))))
