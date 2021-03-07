@@ -70,7 +70,7 @@
 ;; Given an input molecule of "e", what are the fewest steps needed to create the medicine
 ;; molecule (aka *molecule*)?
 
-;; My approach is to deconstruct the final module back to "e". I sort the replacements so
+;; My approach is to deconstruct the final molecule back to "e". I sort the replacements so
 ;; that the longest ones are sorted first, then walk that list attempting to reduce those
 ;; longest strings before the shorter ones.
 
