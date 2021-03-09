@@ -26,3 +26,22 @@
 (defun find-lowest-house-number (min-presents)
   (let ((houses (visit-houses min-presents)))
     (+ 1 (position min-presents houses :test #'(lambda (i x) (>= x i))))))
+
+;; Part 2
+
+;; Elves now only visit up to 50 houses.  Now, for a given elf, x, they deliver
+;; (* 11 x) presents to every x houses.  What is the new low house number?
+
+(defun part2-visit-houses (min-presents visit-limit)
+  (let* ((houses (make-array (/ min-presents 10) :initial-element 0))
+         (house-array-size (array-total-size houses)))
+    (loop :for i :below house-array-size
+          :for step = (+ i 1)
+          :do (loop :for j :from i :below (min (* step visit-limit) house-array-size) :by step
+                    :for house-current-total = (aref houses j)
+                    :do (setf (aref houses j) (+ house-current-total (* step 11))))
+          :finally (return houses))))
+
+(defun part2-find-lowest-house-number (min-presents)
+  (let ((houses (part2-visit-houses min-presents 50)))
+    (+ 1 (position min-presents houses :test #'(lambda (i x) (>= x i))))))
