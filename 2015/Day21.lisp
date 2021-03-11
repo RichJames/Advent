@@ -27,8 +27,8 @@
 ;; these would guarantee a win.  Of those, I need to pick the cheapest option.
 
 ;; Attributes are: '(hit-points damage armor)
-(defparameter *boss* '(104 8 12))
-(defparameter *me*   '(100 0  0))
+(defparameter *boss* '(104 8 1))
+(defparameter *me*   '(100 0 0))
 
 ;; Items are: '(name cost damage armor)
 (defparameter *weapons* '((dagger      8 4 0)
@@ -76,15 +76,11 @@
         :finally (return winners)))
 
 (defun find-cheapest-winner (combos)
-  (loop :with best-combo = nil
-        :with cheapest-cost = 999
-        :for combo :in combos
-        :for combo-cost = (combo-cost combo)
-        :do (if (< combo-cost cheapest-cost)
-                (progn
-                  (setf best-combo combo)
-                  (setf cheapest-cost combo-cost)))
-        :finally (return (values cheapest-cost best-combo))))
+  (car (sort (compute-combo-costs combos) #'< :key 'car)))
+
+(defun compute-combo-costs (combos)
+  (loop :for combo :in combos
+        :collect (list (combo-cost combo) combo)))
 
 (defun combo-cost (combo)
   ;; combo will be a list: '(weapon armor ring1 ring2)
@@ -116,6 +112,20 @@
         (ring1-damage   (nth 2 (find (nth 2 combo) *rings*   :key 'car)))
         (ring2-damage   (nth 2 (find (nth 3 combo) *rings*   :key 'car))))
     (+ weapon-damage ring1-damage ring2-damage)))
+
+;; Part 2
+
+;; What is the most gold I can spend and still lose the fight?
+
+(defun find-losing-combos (combos)
+  (let ((winning-combos   (find-winning-combos combos)))
+    (set-difference combos winning-combos :test 'equal)))
+
+(defun find-most-expensive-combo (combos)
+  (car (reverse (sort (compute-combo-costs combos) #'< :key 'car))))
+
+(defun find-part2-answer ()
+  (find-most-expensive-combo (find-losing-combos (build-part1-combos))))
 
 
 
