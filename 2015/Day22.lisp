@@ -69,12 +69,11 @@
         (nreverse avail-spells))))
 
 (defun play-one-turn (game spell)
-  ;; player round
   (let ((player  (game-player game))
         (boss    (game-boss game)))
-    
+
+    ;; player round    
     (perform-timed-spells game)
-    ;; Choose from available spells
     (setf (player-mana player)        (- (player-mana player) (spell-cost spell))
           (player-total-spend player) (+ (player-total-spend player) (spell-cost spell)))
     (push spell (player-spell-history player))
@@ -89,17 +88,6 @@
     (perform-timed-spells game)
     (let ((p-hit-points (player-hit-points player)))
       (setf (player-hit-points player) (- p-hit-points (max 1 (- (boss-damage boss) (player-armor player))))))))
-
-(defun display-state (game)
-  (let ((player  (game-player game))
-        (boss    (game-boss game)))
-    (format t "Player hit-points: ~a, Player armor: ~a, Player mana: ~a~%"
-            (player-hit-points player)
-            (player-armor player)
-            (player-mana player))
-    (format t "Boss hit-points: ~a~%" (boss-hit-points boss))
-    (format t "Shield timer: ~a, Poison-timer: ~a, Recharge timer: ~a~%"
-            (game-shield-timer game) (game-poison-timer game) (game-recharge-timer game))))
 
 (defun perform-timed-spells (game)
   (apply-shield-spell game)
