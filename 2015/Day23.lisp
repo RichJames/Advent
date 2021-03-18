@@ -103,3 +103,13 @@
         :while (< *inst-ptr* end-of-instructions)
         :do (perform-instruction instruction))
   *registers*)
+
+;; Part 2
+
+;; What is register B if register A starts at 1 instead?
+
+(defun reset-registers ()
+  (setf (cdr (assoc "a" *registers* :test 'equal)) 1)
+  (setf (cdr (assoc "b" *registers* :test 'equal)) 0))
+
+;; Run execute-instructions again after compiling the above functions
