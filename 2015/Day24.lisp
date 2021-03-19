@@ -29,10 +29,8 @@
         (original-target target-number))
     
     (labels ((find-set-helper (numbers target-number found-numbers)
-               ;;(format t "Numbers are: ~a~%" numbers)
                (cond ((null numbers) nil)
                      ((= (car numbers) target-number) (let ((found-set (push (car numbers) found-numbers)))
-                                                        ;;(format t "Finding: ~a~%" found-set)
                                                         (setf (gethash found-set sets) t)
                                                         (find-set-helper (cdr numbers)
                                                                          original-target
@@ -57,7 +55,6 @@
   (let* ((sets         (find-set numbers target-number))
          (rev-set      (reverse (sort sets #'(lambda (a b) (> (length a) (length b))))))
          (shortest-len (length (car rev-set))))
-    ;; need code here to pull only those sets in rev-set that have length shortest-len
     (remove-if-not #'(lambda (a) (= shortest-len (length a))) rev-set)))
 
 (defun quantum-entanglement (list)
