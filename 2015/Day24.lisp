@@ -21,6 +21,8 @@
 (defparameter *packages* '(1 2 3 5 7 13 17 19 23 29 31 37 41 43 53 59 61 67 71
                            73 79 83 89 97 101 103 107 109 113))
 
+(defparameter *set-weight* (/ (reduce #'+ *packages*) 3))
+
 (defparameter *sets* (make-hash-table :test 'equal))
 
 (defun find-set (numbers target-number)
@@ -64,7 +66,7 @@
   (reduce #'* list))
 
 (defun part1 ()
-  (let* ((smallest-packages (find-smallest-packages *packages* 512))
+  (let* ((smallest-packages (find-smallest-packages *packages* *set-weight*))
          (quantum-vals      (mapcar #'quantum-entanglement smallest-packages))
          (sorted-q-vs       (sort quantum-vals #'<)))
     (car sorted-q-vs)))
