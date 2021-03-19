@@ -23,8 +23,6 @@
 
 (defparameter *set-weight* (/ (reduce #'+ *packages*) 3))
 
-(defparameter *sets* (make-hash-table :test 'equal))
-
 (defun find-set (numbers target-number)
   (let ((sorted-numbers  (reverse (sort numbers #'<)))
         (sets            (make-hash-table :test 'equal))
