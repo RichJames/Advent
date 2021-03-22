@@ -23,46 +23,78 @@
 
 (defparameter *set-weight* (/ (reduce #'+ *packages*) 3))
 
-(defun find-set (numbers target-number)
-  (let ((sorted-numbers  (reverse (sort numbers #'<)))
-        (sets            (make-hash-table :test 'equal))
-        (original-target target-number))
-    
-    (labels ((find-set-helper (numbers target-number found-numbers)
-               (cond ((null numbers) nil)
-                     ((= (car numbers) target-number) (let ((found-set (push (car numbers) found-numbers)))
-                                                        (setf (gethash found-set sets) t)
-                                                        (find-set-helper (cdr numbers)
-                                                                         original-target
-                                                                         nil)))
-                     ((> (car numbers) target-number) (find-set-helper (cdr numbers)
-                                                                       target-number
-                                                                       found-numbers))
-                     (t (progn
-                          (find-set-helper (cdr numbers)
-                                           (- target-number (car numbers))
-                                           (push (car numbers) found-numbers))
-                          (find-set-helper (cdr numbers)
-                                           original-target
-                                           nil))))))
-
-      (find-set-helper sorted-numbers target-number nil))
-
-    (loop :for key :being :the :hash-keys :of sets
-          :collect key)))
-
-(defun find-smallest-packages (numbers target-number)
-  (let* ((sets         (find-set numbers target-number))
-         (rev-set      (reverse (sort sets #'(lambda (a b) (> (length a) (length b))))))
-         (shortest-len (length (car rev-set))))
-    (remove-if-not #'(lambda (a) (= shortest-len (length a))) rev-set)))
-
 (defun quantum-entanglement (list)
   (reduce #'* list))
 
-(defun part1 ()
-  (let* ((smallest-packages (find-smallest-packages *packages* *set-weight*))
-         (quantum-vals      (mapcar #'quantum-entanglement smallest-packages))
+(defun sets-2 (l)
+  (list (list (car l)) (list (cadr l)) l))
+
+(defun sets-x (l)
+  ;; Finds all subsets of set l
+  (if (= (length l) 2)
+      (sets-2 l)
+      (let ((subsets    (sets-x (cdr l)))
+            (first-item (car l)))
+        (append (list (list first-item)) subsets (mapcar #'(lambda (x) (cons first-item x)) subsets)))))
+
+(defun sets-x (l target)
+  ;; Finds all subsets of set l
+  (if (= (length l) 2)
+      (sets-2 l)
+      (let ((subsets    (sets-x (cdr l) target))
+            (first-item (car l)))
+        (setf subsets (remove-if #'(lambda (x) (> (reduce #'+ x) target)) subsets))
+        (append (list (list first-item)) subsets (mapcar #'(lambda (x) (cons first-item x)) subsets)))))
+
+(defparameter *smallest-sets* nil)
+(defparameter *smallest-count* most-positive-fixnum)
+
+(defun find-sets-x (l target)
+  (if (= (length l) 2)
+      (sets-2 l)
+      (let ((subsets    (find-sets-x (cdr l) target))
+            (first-item (car l)))
+        (setf subsets (remove-if #'(lambda (x)
+                                     (let ((sum (reduce #'+ x)))
+                                       (or (> sum target) (> (+ sum first-item) target))))
+                                 subsets))
+        (setf subsets (append (list (list first-item)) subsets (mapcar #'(lambda (x) (cons first-item x)) subsets))))))
+
+(defun find-sets-x (l target)
+  (if (= (length l) 2)
+      (sets-2 l)
+      (let* ((subsets    (find-sets-x (cdr l) target))
+             (first-item (car l))
+             (result     (append (list (list first-item)) subsets (mapcar #'(lambda (x) (cons first-item x)) subsets))))
+        (identify-winners result target)
+        (remove-if #'(lambda (x) (> (length x) *smallest-count*)) result))))
+
+(defun identify-winners (lists target)
+  (loop :for list :in lists
+        :do (if (= (reduce #'+ list) target)
+                (if (= (length list) *smallest-count*)
+                    (push list *smallest-sets*)
+                    (if (< (length list) *smallest-count*)
+                        (setf *smallest-sets* (list list)
+                              *smallest-count* (length list)))))))
+
+(defun find-sets (l target)
+  (setf *smallest-sets*  nil
+        *smallest-count* most-positive-fixnum)
+  (find-sets-x l target)
+  (values *smallest-sets*
+          *smallest-count*))
+
+(defun find-best-q-e (l target)
+  (let* ((sets              (find-sets l target))
+         (quantum-vals      (mapcar #'quantum-entanglement sets))
          (sorted-q-vs       (sort quantum-vals #'<)))
     (car sorted-q-vs)))
 
+(defun part1 ()
+  (let* ((weight (/ (reduce #'+ *packages*) 3)))
+    (find-best-q-e *packages* weight)))
+
+(defun part2 ()
+  (let* ((weight (/ (reduce #'+ *packages*) 4)))
+    (find-best-q-e *packages* weight)))
