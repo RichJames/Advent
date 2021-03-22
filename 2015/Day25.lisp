@@ -36,15 +36,6 @@
         :finally (let ((max-dim (max max-row max-col)))
                    (return (list max-dim max-dim)))))
 
-(defun get-code-old (cell)
-  (let ((multiplier   252533)
-        (divisor    33554393)
-        (row        (car cell))
-        (col        (cadr cell)))
-    (cond ((= row col 1) *first-code*)
-          (t (rem (* (get-code (prior-cell row col)) multiplier) divisor)))))
-
-
 (defun get-code (row col)
   (let* ((matrix-dims  (find-matrix-size row col))
          (matrix-rows  (car matrix-dims))
@@ -63,36 +54,6 @@
 
     (aref codes (1- row) (1- col))))
 
+(defun part1 ()
+  (get-code 2978 3083))
 
-#|
-(1 1) ==> initial value      **** special case
-(2 1) ==> (1 1)      (-1  0) *** (col = 1)
-(1 2) ==> (2 1)      (+1 -1)
-(3 1) ==> (1 2)      (-2 +1) *** (col = 1): set col = row - 1, set row = 1
-(2 2) ==> (3 1)      (+1 -1)
-(1 3) ==> (2 2)      (+1 -1)
-(4 1) ==> (1 3)      (-3 +2) *** (col = 1)
-(3 2) ==> (4 1)      (+1 -1)
-(2 3) ==> (3 2)      (+1 -1)
-(1 4) ==> (2 3)      (+1 -1)
-(5 1) ==> (1 4)      (-4 +3) *** (col = 1)
-(4 2) ==> (5 1)      (+1 -1)
-(3 3) ==> (4 2)      (+1 -1)
-(2 4) ==> (3 3)      (+1 -1)
-(1 5) ==> (2 4)      (+1 -1)
-(6 1) ==> (1 5)      (-5 +4) *** (col = 1)
-
-(7 1) ==> (1 6)
-(5 1) ==> (1 4)
--------------------------------------------
-(1 1) ==> (2 1)   (+1  0) ***
-(2 1) ==> (1 2)   (-1 +1)
-(1 2) ==> (3 1)   (+2 -1) *** (input row = 1), row = row + col, col = 1
-(3 1) ==> (2 2)   (-1 +1)
-(2 2) ==> (1 3)   (-1 +1)
-(1 3) ==> (4 1)   (+3 -2) ***
-(4 1) ==> (3 2)   (-1 +1)
-(3 2) ==> (2 3)   (-1 +1)
-(2 3) ==> (1 4)   (-1 +1)
-(1 4) ==> (5 1)   (+4 -3) ***
-|#
