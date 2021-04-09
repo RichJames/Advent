@@ -50,8 +50,6 @@
 
 ;;; ***** Part2 *****
 
-(defparameter *room-to-find* "North Pole")
-
 (defun shift-letter (c shift)
   (let* ((shift-amount (rem shift 26))
          (char-code-a  (char-code #\a))
