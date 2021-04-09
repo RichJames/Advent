@@ -11,7 +11,6 @@
                                    '((1 2 3)
                                      (4 5 6)
                                      (7 8 9))))
-(defparameter *code* nil)
 
 (defstruct pad-pos
   (x 1) (y 1))
