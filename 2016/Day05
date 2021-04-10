@@ -1,0 +1,8 @@
+;;;;
+;;;;  Advent of Code 2016
+;;;;     Day 05
+
+(defpackage #:2016Day05
+  (:use #:cl))
+
+(in-package #:2016Day05)
