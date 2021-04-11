@@ -38,10 +38,29 @@
                   :for letter = (code-char c-code)
                   :collect (list letter count) :into results
                   :finally (push (list (caar (stable-sort results #'> :key 'cadr))) message))
-        :finally (return (reverse message))))
+        :finally (return (coerce (mapcar #'car (reverse message)) 'string))))
 
 (defun part1 ()
   (reset)
   (count-input *input*)
   (decode-input))
 
+;;; ***** Part 2 *****
+
+(defun decode-input2 ()
+  (loop :with message = nil
+        :for i :below 8
+        :do (loop :with code-for-a = (char-code #\a)
+                  :for j :below 26
+                  :for count = (aref *letter-counts* i j)
+                  :for c-code = code-for-a :then (1+ c-code)
+                  :for letter = (code-char c-code)
+                  :if (> count 0)
+                    :collect (list letter count) :into results
+                  :finally (push (list (caar (stable-sort results #'< :key 'cadr))) message))
+        :finally (return (coerce (mapcar #'car (reverse message)) 'string))))
+
+(defun part2 ()
+  (reset)
+  (count-input *input*)
+  (decode-input2))
