@@ -15,7 +15,7 @@
 (defun display-screen ()
   (loop :for r :below (array-dimension *screen* 0)
         :do (loop :for c :below (array-dimension *screen* 1)
-                  :do (format t "~a" (if (aref *screen* r c) "*" "."))
+                  :do (format t "~a" (if (aref *screen* r c) "#" " "))
                   :finally (format t "~%"))))
 
 (defun instr-rect (cols rows)
@@ -87,3 +87,8 @@
           :finally (progn
                      (display-screen)
                      (return (number-of-lit-pixels))))))
+
+;;; ***** Part 2 *****
+
+;;; Simply read the letters presented when display-screen is called.
+
