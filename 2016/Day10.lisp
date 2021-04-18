@@ -182,3 +182,11 @@
 (defun get-vals (list)
   (loop :for bot-id :in list
         :collect (list bot-id (bot-value-1 (aref *bots* bot-id)) (bot-value-2 (aref *bots* bot-id)))))
+
+;;; ***** Part 2 *****
+
+(defun part2 ()
+  (prepare-bots *input-file*)
+  (loop :for (keep-processing found-bot) = (activate-bots)
+        :while keep-processing)
+  (* (aref *outputs* 0) (aref *outputs* 1) (aref *outputs* 2)))
