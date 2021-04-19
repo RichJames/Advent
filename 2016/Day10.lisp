@@ -17,11 +17,13 @@
 (defparameter *outputs* nil)
 
 (defparameter *input-file* "~/quicklisp/local-projects/rich/advent/2016/Day10.txt")
-(defparameter *test-file*  "~/quicklisp/local-projects/rich/advent/2016/Day10test.txt")
 
 (defun reset ()
   (setf (fill-pointer *bots*) 0)
   (setf *outputs* nil))
+
+
+;;; *** Code to read, interpret and save in usable form the input data ***
 
 (defun value-instr-p (instr)
   "Returns true if instr is a value instruction, otherwise returns nil."
@@ -50,11 +52,8 @@
         (value-regex instr)
       (list value bot))))
 
-(defun prepare-bots (file)
-  (reset)
-  (read-and-record-instrs file))
-
 (defun initialize-outputs (instrs)
+  "Prepares the *outputs* array, sized based on the input data."
   (let* ((output-ids    (mapcan #'(lambda (x) (list (if (string= "output" (nth 1 x))
                                                         (nth 2 x)
                                                         0)
@@ -65,11 +64,9 @@
          (highest-id    (car (reverse (sort output-ids #'<)))))
     (setf *outputs* (make-array (1+ highest-id) :initial-element 0))))
 
-;; Is there a better, cleaner, more idiomatic way to do all of the below?
 (defun read-and-record-instrs (file)
   "Reads the instructions from the input file and sets up the bots accordingly in the *bots* array."
-  (let ((value-instrs nil)
-        (give-instrs  nil))
+  (let ((instructions nil))
 
     (with-open-file (stream file)
       
@@ -79,26 +76,34 @@
               :collect (parse-give-instr instr) :into give-instructions
             :if (value-instr-p instr)
               :collect (parse-value-instr instr) :into value-instructions
-            :finally (progn
-                       (setf value-instrs value-instructions)
-                       (setf give-instrs (sort give-instructions #'< :key #'car)))))
+            :finally (setf instructions (list (sort give-instructions #'< :key #'car) value-instructions))))
 
-    (loop :for instr :in give-instrs
+    ;; create bot objects in the *bots* array, based on give instructions found in the input file
+    (loop :with sorted-instrs = (car instructions)
+          :for instr :in sorted-instrs
           :for (bot-id low-target low-id high-target high-id) = instr
           :do (vector-push-extend (make-bot
                                    :lower (format nil "~a ~a" low-target low-id)
                                    :higher (format nil "~a ~a" high-target high-id))
                                   *bots*))
 
-    (loop :for instr :in value-instrs
+    ;; assign initial values to bots that have them, based on value instructions found in the input file
+    (loop :for instr :in (cadr instructions)
           :for (value bot) = instr 
-          :do (let ((bot-copy (aref *bots* bot)))
-                (if (null (bot-value-1 bot-copy))
-                    (setf (bot-value-1 bot-copy) value)
-                    (setf (bot-value-2 bot-copy) value))
-                (setf (aref *bots* bot) bot-copy)))
+          :do (if (null (bot-value-1 (aref *bots* bot)))
+                  (setf (bot-value-1 (aref *bots* bot)) value)
+                  (setf (bot-value-2 (aref *bots* bot)) value)))
 
-    (initialize-outputs give-instrs)))
+    ;; create *outputs* array, based on outputs identified in the give instructions
+    (initialize-outputs (car instructions))))
+
+(defun prepare-bots (file)
+  "Resets and then loads the *bots* and *outputs* arrays, based on instructions in file."
+  (reset)
+  (read-and-record-instrs file))
+
+
+;;; *** Code to set the bots in motion, following their instructions ***
 
 (defun bot-ready-p (bot)
   "Returns true if bot has both its values; otherwise, returns nil."
@@ -110,49 +115,53 @@
   (let* ((active-bot  (aref *bots* bot))
          (active-val1 (bot-value-1 active-bot))
          (active-val2 (bot-value-2 active-bot))
-         (low-val     (if (< active-val1 active-val2) active-val1 active-val2))
-         (high-val    (if (= low-val active-val1) active-val2 active-val1)))
+         (min-val     (min active-val1 active-val2))
+         (max-val     (max active-val1 active-val2)))
+    
     (if (bot-ready-p active-bot)
         (let ((target-regex "(\\w+)\\s(\\d+)"))
+
+          (setf (bot-value-1 (aref *bots* bot)) nil)
+          (setf (bot-value-2 (aref *bots* bot)) nil)
+          
           (ppcre:register-groups-bind (target (#'parse-integer target-id)) (target-regex (bot-lower active-bot))
             (if (string= "bot" target)
-                (update-bot bot target-id low-val :lower t)
-                (update-output bot target-id low-val :lower t)))
+                (update-bot target-id min-val)
+                (update-output target-id min-val)))
+          
           (ppcre:register-groups-bind (target (#'parse-integer target-id)) (target-regex (bot-higher active-bot))
             (if (string= "bot" target)
-                (update-bot bot target-id high-val)
-                (update-output bot target-id high-val)))))))
+                (update-bot target-id max-val)
+                (update-output target-id max-val)))))))
 
-(defun update-bot (bot-id target-bot-id value &key (lower nil))
+(defun update-bot (target-bot-id value)
+  "Update bot and target-bot, moving value from the former to the latter."
   (let* ((target-bot     (aref *bots* target-bot-id))
          (target-value1  (bot-value-1 target-bot))
          (target-value2  (bot-value-2 target-bot)))
+    
     (if (not (and target-value1 target-value2))
-        (progn
-          (if target-value1
-              (setf (bot-value-2 (aref *bots* target-bot-id)) value)
-              (setf (bot-value-1 (aref *bots* target-bot-id)) value))
-          (if lower
-              (setf (bot-value-1 (aref *bots* bot-id)) nil)
-              (setf (bot-value-2 (aref *bots* bot-id)) nil))))))
+        (if target-value1
+            (setf (bot-value-2 (aref *bots* target-bot-id)) value)
+            (setf (bot-value-1 (aref *bots* target-bot-id)) value)))))
 
-(defun update-output (bot-id target-id value &key (lower nil))
-  (setf (aref *outputs* target-id) value)
-  (if lower
-      (setf (bot-value-1 (aref *bots* bot-id)) nil)
-      (setf (bot-value-2 (aref *bots* bot-id)) nil)))
+(defun update-output (target-id value)
+  "Update bot and the targetted output slot, moving value from the former to the latter."
+  (setf (aref *outputs* target-id) value))
 
-(defun compares-61-with-17-p (bot)
+(defun has-values-p (bot value1 value2)
+  "Returns true if bot has both values; otherwise, returns nil."
   (declare (bot bot))
   (and (and (bot-value-1 bot) (bot-value-2 bot))
-       (or (and (= (bot-value-1 bot) 61) (= (bot-value-2 bot) 17))
-           (and (= (bot-value-1 bot) 17) (= (bot-value-2 bot) 61)))))
+       (or (and (= (bot-value-1 bot) value1) (= (bot-value-2 bot) value2))
+           (and (= (bot-value-1 bot) value2) (= (bot-value-2 bot) value1)))))
 
 (defun activate-bots ()
+  "Loops once through all bots, activating those that have two values and checking which bot has 61 & 17."
   (loop :with processed-a-bot = nil
         :for bot :across *bots*
         :for i :upfrom 0
-        :if (compares-61-with-17-p bot)
+        :if (has-values-p bot 61 17)
           :collect i :into found-bot
         :if (bot-ready-p bot)
           :do (progn
@@ -161,27 +170,11 @@
         :finally (return (list processed-a-bot found-bot))))
 
 (defun part1 ()
+  "Continuously activate bots until no more can be activated and/or the bot we are looking for is found."
   (prepare-bots *input-file*)
   (loop :for (keep-processing found-bot) = (activate-bots)
-        :for i :upfrom 1
         :while (and keep-processing (not found-bot))
         :finally (format t "bot that compares 61 & 17: ~a~%" found-bot)))
-
-(defun test ()
-  (prepare-bots *test-file*)
-  (loop :for (keep-processing found-bot) = (activate-bots)
-        :while (and keep-processing (not found-bot))
-        :finally (return found-bot)))
-
-(defun any-ready-bots ()
-  (loop :for bot :across *bots*
-        :for i :upfrom 0
-        :if (bot-ready-p bot)
-          :collect i))
-
-(defun get-vals (list)
-  (loop :for bot-id :in list
-        :collect (list bot-id (bot-value-1 (aref *bots* bot-id)) (bot-value-2 (aref *bots* bot-id)))))
 
 ;;; ***** Part 2 *****
 
@@ -190,3 +183,11 @@
   (loop :for (keep-processing found-bot) = (activate-bots)
         :while keep-processing)
   (* (aref *outputs* 0) (aref *outputs* 1) (aref *outputs* 2)))
+
+
+
+
+
+
+
+
