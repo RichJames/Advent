@@ -108,7 +108,7 @@
 
 (defun parse-give-instr (instr)
   "Decomposes a give instruction, returning the bot that is giving and the type and id of the low and high bots it gives to."
-  (let ((give-regex "(\\d+)\\sgives\\slow\\sto\\s(\\w+)\\s(\\d+)\\sand\\shigh\\sto\\s(\\w+)\\s(\\d+)"))
+  (let ((give-regex "bot (\\d+) gives low to (\\w+) (\\d+) and high to (\\w+) (\\d+)"))
     (ppcre:register-groups-bind ((#'parse-integer bot)
                                  low-target
                                  (#'parse-integer low-id)
@@ -119,7 +119,7 @@
 
 (defun parse-value-instr (instr)
   "Decomposes a value instruction, returning the value and the bot it is assigned to."
-  (let* ((value-regex "^value\\s(\\d+)\\sgoes\\sto\\sbot\\s(\\d+)"))
+  (let* ((value-regex "^value (\\d+) goes to bot (\\d+)"))
     (ppcre:register-groups-bind ((#'parse-integer value)
                                  (#'parse-integer bot))
         (value-regex instr)
@@ -147,10 +147,8 @@
       
       (loop :for instr = (read-line stream nil nil)
             :while instr
-            :if (give-instr-p instr)
-              :collect (parse-give-instr instr) :into give-instructions
-            :if (value-instr-p instr)
-              :collect (parse-value-instr instr) :into value-instructions
+            :if (give-instr-p instr) :collect (parse-give-instr instr) :into give-instructions
+            :if (value-instr-p instr) :collect (parse-value-instr instr) :into value-instructions
             :finally (setf instructions (list (sort give-instructions #'< :key #'car) value-instructions))))
 
     ;; create bot objects in the *bots* array, based on give instructions found in the input file
@@ -193,8 +191,7 @@
   (loop :with processed-a-bot = nil
         :for bot :across *bots*
         :for i :upfrom 0
-        :if (has-values-p bot 61 17)
-          :collect i :into found-bot
+        :if (has-values-p bot 61 17) :collect i :into found-bot
         :if (is-ready-p bot)
           :do (progn
                 (setf processed-a-bot t)
