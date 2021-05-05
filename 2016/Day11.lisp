@@ -234,17 +234,11 @@
 ;;;  33-42: 10 bits representing floor 3, similar to floor 1
 ;;;  43-52: 10 bits representing floor 4, similar to floor 1
 
-(defparameter *facility* #*0000000000001000010000000000111101111000000000000000)
-
-;;; An alternative might be to just work directly with binary numbers
 (defparameter *facility* #b0000000000001000010000000000111101111000000000000000)
 
 ;;; This is the end-goal: all chips and microchips on floor 4.  The moment this is achieved,
 ;;; the elevator will also be on floor 4 (having just brought the final components).
 
-(defparameter *end-goal* #*1100000000000000000000000000000000000000001111111111)
-
-;;; Binary number alternative:
 (defparameter *end-goal* #b1100000000000000000000000000000000000000001111111111)
 
 
@@ -286,7 +280,14 @@
 
 
 (defun vals->bits (vals)
-  )
+  (loop :with bits = 0
+        :for val :in vals
+        :do (cond ((eq val 'a) (setf bits (logior bits #b10000)))
+                  ((eq val 'b) (setf bits (logior bits #b01000)))
+                  ((eq val 'c) (setf bits (logior bits #b00100)))
+                  ((eq val 'd) (setf bits (logior bits #b00010)))
+                  ((eq val 'e) (setf bits (logior bits #b00001))))
+        :finally (return bits))  )
 
 (defun display-state (&optional (facility *facility*))
   (let ((*facility* facility))
@@ -325,9 +326,8 @@
         :sum (ldb (byte 1 i) bits)))
 
 (defun pick-up (&key (chips 0) (generators 0))
-  (let* ((elev-floor    (e-floor))
-         (floor-chips   (chip-bits (floor-bits elev-floor)))
-         (floor-gens    (gen-bits (floor-bits elev-floor)))
+  (let* ((floor-chips   (chip-bits (floor-bits (e-floor))))
+         (floor-gens    (gen-bits (floor-bits (e-floor))))
          (new-e-chips   (logior (chip-bits (e-bits)) chips))
          (new-e-gens    (logior (gen-bits (e-bits)) generators))
          (new-fl-chips  (logxor floor-chips chips))
@@ -336,45 +336,30 @@
     (if (<= (+ (count-bits new-e-chips) (count-bits new-e-gens)) 2)
 
         (progn
-          (if (= chips (logand chips floor-chips))
+          (if (and (/= chips 0) (= chips (logand chips floor-chips)))
               (setf (chip-bits (e-bits)) new-e-chips
-                    (chip-bits (floor-bits elev-floor)) new-fl-chips))
+                    (chip-bits (floor-bits (e-floor))) new-fl-chips))
 
-          (if (= generators (logand generators floor-gens))
+          (if (and (/= generators 0) (= generators (logand generators floor-gens)))
               (setf (gen-bits (e-bits)) new-e-gens
-                    (gen-bits (floor-bits elev-floor)) new-fl-gens))))))
+                    (gen-bits (floor-bits (e-floor))) new-fl-gens))))))
 
-(defun drop-off (&key (chips nil) (generators nil))
-  )
+(defun drop-off (&key (chips 0) (generators 0))
+  (let* ((e-chips      (chip-bits (e-bits)))
+         (e-gens       (gen-bits (e-bits)))
+         (new-e-chips  (logxor e-chips chips))
+         (new-e-gens   (logxor e-gens generators))
+         (new-fl-chips (logior (chip-bits (floor-bits (e-floor))) chips))
+         (new-fl-gens  (logior (chip-bits (floor-bits (e-floor))) generators)))
+
+    (if (and (/= chips 0) (= chips (logand chips e-chips)))
+        (setf (chip-bits (floor-bits (e-floor))) new-fl-chips
+              (chip-bits (e-bits)) new-e-chips))
+
+    (if (and (/= generators 0) (= generators (logand generators e-gens)))
+        (setf (gen-bits (floor-bits (e-floor))) new-fl-gens
+              (gen-bits (e-bits)) new-e-gens))))
 
 (defun print-bits (n size)
   (format t "~v,'0b" size (ldb (byte size 0) n)))
 
-(deftest test-pickup ()
-  (combine-results
-   (test-pickup-chips)
-   (test-pickup-gens)
-   (test-pickup-chips-and-gens)))
-
-(deftest test-pickup-chips ()
-  (check
-   (= (test-pick-up) *facility*)
-   (= (test-pick-up :chips #b10000) #b0010000000000000010000000000111101111000000000000000)
-   (= (test-pick-up :chips #b01000) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :chips #b00100) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :chips #b00010) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :chips #b00001) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :chips #b01000) #b0000000000001000010000000000111101111000000000000000)))
-
-(deftest test-pickup-gens ()
-  (check
-   (= (test-pick-up :generators #b10000) #b0000000100001000000000000000111101111000000000000000)
-   (= (test-pick-up :generators #b01000) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :generators #b00100) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :generators #b00010) #b0000000000001000010000000000111101111000000000000000)
-   (= (test-pick-up :generators #b00001) #b0000000000001000010000000000111101111000000000000000)))
-
-(defun test-pick-up (&key (chips 0) (generators 0) (init-state state))
-  (let ((*facility* state))
-    (pick-up :chips chips :generators generators)
-    *facility*))
