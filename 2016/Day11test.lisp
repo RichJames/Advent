@@ -6,8 +6,6 @@
 
 ;;; Unit test framework
 
-(load "Day11.lisp")
-
 (defvar *test-name* nil)
 
 (defun report-result (result form)
@@ -43,19 +41,11 @@
     (drop-off :chips chip-bits :generators gen-bits)
     *facility*))
 
-(deftest test-pickup-chips ()
-  (reset)
-  (check
-    (= (test-pick-up) *facility*)
-    (= (test-pick-up :chips (vals->bits '(a))) #b0010000000000000010000000000111101111000000000000000)
-    (= (test-pick-up :chips (vals->bits '(b))) *facility*)
-    (= (test-pick-up :chips (vals->bits '(a b))) *facility*)
-    (= (test-pick-up :chips (vals->bits '(a b c))) *facility*)
-    (change-floor 'up)
-    (change-floor 'up)
-    (= (test-pick-up :chips (vals->bits '(b c))) #b1001100000001000010000000000111100011000000000000000)
-    (= (test-pick-up :chips (vals->bits '(b c d))) #b1000000000001000010000000000111101111000000000000000))
-  (reset))
+(defun test-move (direction &key (chips nil) (generators nil))
+  (let ((chip-bits  (if chips (vals->bits chips) 0))
+        (gen-bits   (if generators (vals->bits generators) 0)))
+    (move direction :chips chip-bits :generators gen-bits)
+    (display-state)))
 
 (deftest test-pickup-chips ()
   (reset)
@@ -114,7 +104,7 @@
   (check
     (= (test-drop-off) *facility*)))
 
-(deftest test-drop-off ()
+(deftest test-dropoff ()
   (combine-results
     (test-drop-chips)
     (test-drop-gens)
@@ -122,5 +112,5 @@
 
 (deftest test-all ()
   (combine-results
-    (test-pick-up)
-    (test-drop-off)))
+    (test-pickup)
+    (test-dropoff)))

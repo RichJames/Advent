@@ -7,220 +7,7 @@
 
 (in-package #:2016Day11)
 
-(defclass bldg-floor ()
-  ((chips       :initarg :chips      :initform nil :accessor chips)
-   (generators  :initarg :generators :initform nil :accessor generators)))
-
-(defclass elevator ()
-  ((current-floor :initarg :current-floor :initform 0   :accessor current-floor)
-   (chips         :initarg :chips         :initform nil :accessor chips)
-   (generators    :initarg :generators    :initform nil :accessor generators)))
-
-(defparameter *facility* (make-array 4 :element-type 'bldg-floor))
-(defparameter *elevator* (make-instance 'elevator))
-(defparameter *materials* '(promethium cobalt curium ruthenium plutonium))
-
-(defun reset ()
-  (setf *elevator* (make-instance 'elevator))
-  (setf (aref *facility* 0) (make-instance 'bldg-floor
-                                           :chips (list (car *materials*))
-                                           :generators (list (car *materials*)))
-
-        (aref *facility* 1) (make-instance 'bldg-floor
-                                           :chips nil
-                                           :generators (cdr *materials*))
-        
-        (aref *facility* 2) (make-instance 'bldg-floor
-                                           :chips (cdr *materials*)
-                                           :generators nil)
-
-        (aref *facility* 3) (make-instance 'bldg-floor
-                                           :chips nil
-                                           :generators nil)))
-
-(defun change-floor (elevator direction)
-  (with-accessors ((e-floor current-floor)) elevator
-    (let ((new-floor (cond ((eq direction 'up) (1+ e-floor))
-                           ((eq direction 'down) (1- e-floor))
-                           (t e-floor))))
-      (if (and (>= new-floor 0) (< new-floor (length *facility*)))
-          (setf e-floor new-floor)))))
-
-(defun is-safe-p ()
-  "Returns t if the state of the facility is safe; otherwise, returns nil."
-  (with-accessors ((e-floor current-floor) (e-chips chips) (e-gens generators)) *elevator*
-    (loop :with safe = t
-          :for floor :across *facility*
-          :for i :upfrom 0
-          :do (with-accessors ((fl-chips chips) (fl-gens generators)) floor
-                (let ((chips (if (= e-floor i )
-                                 (union e-chips fl-chips)
-                                 fl-chips))
-                      (gens  (if (= e-floor i)
-                                 (union e-gens fl-gens)
-                                 fl-gens)))
-                  (if (and (and chips gens)
-                           (set-difference chips gens))
-                      (setf safe nil))))
-          :finally (return safe))))
-
-(defun pick-up (elevator &key (chips nil) (generators nil))
-  (with-accessors ((e-floor current-floor) (e-chips chips) (e-gens generators)) elevator
-    (with-accessors ((fl-chips chips) (fl-gens generators)) (aref *facility* e-floor)
-      (setf e-chips  (union  chips e-chips)
-            e-gens   (union  generators e-gens)
-            fl-chips (set-exclusive-or chips fl-chips)
-            fl-gens  (set-exclusive-or generators fl-gens)))))
-
-(defun drop-off (elevator &key (chips nil) (generators nil))
-  (with-accessors ((e-floor current-floor) (e-chips chips) (e-gens generators)) elevator
-    (with-accessors ((fl-chips chips) (fl-gens generators)) (aref *facility* e-floor)
-        (setf fl-chips (union chips fl-chips)
-              fl-gens  (union generators fl-gens)
-              e-chips  (set-exclusive-or chips e-chips)
-              e-gens   (set-exclusive-or generators e-gens)))))
-
-(defun display-state ()
-  (with-accessors ((e-floor current-floor) (e-chips chips) (e-gens generators)) *elevator*
-    (format t "Elevator floor: ~a, elevator chips: ~a, elevator generators: ~a~%~%" e-floor e-chips e-gens)
-
-    (loop :for b-floor :across (reverse *facility*)
-          :for i :downfrom 3
-          :do (with-accessors ((fl-chips chips) (fl-gens generators)) b-floor
-                (let ((fl-ind  (if (= e-floor i) "*" " ")))
-                  (format t "Floor: ~a,~a floor chips: ~a, floor generators: ~a~%~%" i fl-ind fl-chips fl-gens))))
-
-    (format t "Safe?: ~a~%" (is-safe-p))))
-
-
-
-;;; ********* Experiments *********
-
-;;; The below is an interesting effort, but lists won't be efficient if we have to search large lists.  Howver, that
-;;; may not be an issue with this problem as the facility is fairly small.  The performance will be with traversing
-;;; large numbers of stategies for solving the problem.
-
-(defun create-facility ()
-  (copy-tree'(((a) (a))
-              (nil (b c d e))
-              ((b c d e) nil)
-              (() ()))))
-
-(defun create-elevator ()
-  (copy-tree '(1 () ())))
-
-(defparameter *facility* (create-facility))
-
-(defparameter *elevator* (create-elevator))
-
-(defparameter *final-state* "1,2,3,4abcde,abcde")
-
-(defun reset ()
-  (setf *facility* (create-facility)
-        *elevator* (create-elevator))
-  (display-state))
-
-
-(defun get-floor (num)
-  (cond ((= num 1) (first *facility*))
-        ((= num 2) (second *facility*))
-        ((= num 3) (third *facility*))
-        ((= num 4) (fourth *facility*))))
-
-;;; Need to modify this function to check if the state after the move is a new state or not.  If
-;;; it is a new state, save that state in the hash-table.  If it is not a new state, undo the move.
-(defun change-floor (direction)
-  (let ((previous-elevator (copy-tree *elevator*))
-        (previous-state (get-state)))
-    (if (or (second *elevator*) (third *elevator*))
-        (progn
-          (cond ((and (eq direction 'up) (< (first *elevator*) 4)) (incf (first *elevator*)))
-                ((and (eq direction 'down) (> (first *elevator*) 1)) (decf (first *elevator*))))))
-    (if (gethash (get-state) *ht*)
-        (setf *elevator* previous-elevator)
-        (setf (gethash (get-state)) t))))
-
-(defun save-state ()
-  (let ((current-state (get-state)))
-    (cond ((string= current-state *final-state*) (values t t))
-          ((null (gethash current-state *ht*))   (values (setf (gethash current-state *ht*) t) nil))
-          (t                                     (values nil nil)))))
-
-(defun display-state ()
-  (loop :with e-floor = (first *elevator*)
-        :for i :downfrom 4 :to 1
-        :for fl = (get-floor i)
-        :do (if (= e-floor i)
-                (format t "Floor: ~a,* chips: ~a, generators: ~a, **Elevator: chips: ~a, generators: ~a~%"
-                        i (first fl) (second fl) (second *elevator*) (third *elevator*))
-                (format t "Floor: ~a,  chips: ~a, generators: ~a~%"
-                        i (first fl) (second fl))))
-  (format t "Safe?: ~a~%" (is-safe-p)))
-
-(defun get-state ()
-  "Produce a state string suitable hashing and comparing to other state strings."
-  (with-output-to-string (out)
-    (loop :with e-floor = (first *elevator*)
-          :for i from 1 :to 4
-          :for fl = (get-floor i)
-          :do (let ((chips (if (= e-floor i)
-                               (sort (copy-list (union (first fl) (second *elevator*))) #'string<)
-                               (sort (copy-list (first fl)) #'string<)))
-                    (gens  (if (= e-floor i)
-                               (sort (copy-list (union (second fl) (third *elevator*))) #'string<)
-                               (sort (copy-list (second fl)) #'string<))))
-                (format out "~a~{~a~},~{~a~}" i chips gens)))
-    out))
-
-(defun is-safe-p ()
-  "Returns t if the state of the facility is safe; otherwise, returns nil."
-  (loop :with safe = t
-        :with e-floor = (first *elevator*)
-        :for i :from 1 :to 4
-        :for fl = (get-floor i)
-        :do (let ((chips (if (= e-floor i )
-                             (union (second *elevator*) (first fl))
-                             (first fl)))
-                  (gens  (if (= e-floor i)
-                             (union (third *elevator*) (second fl))
-                             (second fl))))
-              (if (and (and chips gens)
-                       (set-difference chips gens))
-                  (setf safe nil)))
-        :finally (return safe)))
-
-(defun pick-up (&key (chips nil) (generators nil))
-  (let ((fl (get-floor (first *elevator*))))
-    
-    (if (and (<= (+ (length chips) (length (second *elevator*))) 2)
-             (<= (+ (length generators) (length (third *elevator*))) 2))
-
-        (progn
-          (if (and chips (intersection chips (first fl)))
-              (setf (second *elevator*) (union            chips (second *elevator*))
-                    (first fl)          (set-exclusive-or chips (first fl))))
-
-          (if (and generators (intersection generators (second fl)))
-              (setf (third *elevator*) (union            generators (third *elevator*))
-                    (second fl)        (set-exclusive-or generators (second fl))))))))
-
-(defun drop-off (&key (chips nil) (generators nil))
-  (let ((fl (get-floor (first *elevator*))))
-    
-    (if (and chips (not (set-difference chips (second *elevator*))))
-        (setf (first fl)          (union            chips (first fl))
-              (second *elevator*) (set-exclusive-or chips (second *elevator*))))
-
-    (if (and generators (not (set-difference generators (third *elevator*))))
-        (setf (second fl)        (union            generators (second fl))
-              (third *elevator*) (set-exclusive-or generators (third *elevator*))))))
-
-(defparameter *ht* (make-hash-table :test 'equal))
-
-
-
-
-;;; Representing the facility state as a bit vector.
+;;; Representing the facility state as a binary number.
 ;;; Reading left to right, the bits are:
 ;;;  1-12: the state of the elevator
 ;;;     - the first 2 bits are the floor number (0-based)
@@ -350,7 +137,7 @@
          (new-e-chips  (logxor e-chips chips))
          (new-e-gens   (logxor e-gens generators))
          (new-fl-chips (logior (chip-bits (floor-bits (e-floor))) chips))
-         (new-fl-gens  (logior (chip-bits (floor-bits (e-floor))) generators)))
+         (new-fl-gens  (logior (gen-bits (floor-bits (e-floor))) generators)))
 
     (if (and (/= chips 0) (= chips (logand chips e-chips)))
         (setf (chip-bits (floor-bits (e-floor))) new-fl-chips
@@ -363,3 +150,11 @@
 (defun print-bits (n size)
   (format t "~v,'0b" size (ldb (byte size 0) n)))
 
+(defun move (direction &key (chips 0) (generators 0))
+  (let ((prev-state *facility*))
+    (pick-up :chips chips :generators generators)
+    (change-floor direction)
+    (drop-off :chips chips :generators generators)
+
+    (if (not (is-safe-p))
+        (setf *facility* prev-state))))
