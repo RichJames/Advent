@@ -42,10 +42,11 @@
     *facility*))
 
 (defun test-move (direction &key (chips nil) (generators nil))
-  (let ((chip-bits  (if chips (vals->bits chips) 0))
-        (gen-bits   (if generators (vals->bits generators) 0)))
-    (move direction :chips chip-bits :generators gen-bits)
-    (display-state)))
+  (let* ((chip-bits  (if chips (vals->bits chips) 0))
+         (gen-bits   (if generators (vals->bits generators) 0))
+         (success    (move direction :chips chip-bits :generators gen-bits)))
+    (display-state)
+    (format t "Move was successful: ~a" success)))
 
 (deftest test-pickup-chips ()
   (reset)

@@ -29,8 +29,7 @@
 (defparameter *end-goal* #b1100000000000000000000000000000000000000001111111111)
 
 
-(defun reset ()
-  (setf *facility* #b0000000000001000010000000000111101111000000000000000))
+
 
 ;;; Only need this if I am working with bit vectors
 (defun bitvec->integer (bitvec)
@@ -150,11 +149,22 @@
 (defun print-bits (n size)
   (format t "~v,'0b" size (ldb (byte size 0) n)))
 
+(defparameter *prev-states* (make-hash-table))
+
+(defun reset ()
+  (setf *facility* #b0000000000001000010000000000111101111000000000000000)
+  (clrhash *prev-states*)
+  (setf (gethash *facility* *prev-states*) t))
+
 (defun move (direction &key (chips 0) (generators 0))
   (let ((prev-state *facility*))
     (pick-up :chips chips :generators generators)
     (change-floor direction)
     (drop-off :chips chips :generators generators)
 
-    (if (not (is-safe-p))
-        (setf *facility* prev-state))))
+    (if (or (not (is-safe-p))
+            (gethash *facility* *prev-states*))
+        (setf *facility* prev-state))
+
+    (if (not (gethash *facility* *prev-states*))
+        (setf (gethash *facility* *prev-states*) t))))
