@@ -45,18 +45,16 @@
   `(ldb (byte 5 0) ,bits))
 
 (defun bits->vals (bits)
-  (flet ((get-bit (bit)
-           (ldb (byte 1 bit) bits)))
-    (list (remove-if #'null (list (if (= (get-bit 9) 1) 'a)
-                                  (if (= (get-bit 8) 1) 'b)
-                                  (if (= (get-bit 7) 1) 'c)
-                                  (if (= (get-bit 6) 1) 'd)
-                                  (If (= (Get-bit 5) 1) 'e)))
-          (remove-if #'null (list (if (= (get-bit 4) 1) 'a)
-                                  (if (= (get-bit 3) 1) 'b)
-                                  (if (= (get-bit 2) 1) 'c)
-                                  (if (= (get-bit 1) 1) 'd)
-                                  (if (= (get-bit 0) 1) 'e))))))
+  (list (remove-if #'null (list (if (logbitp 9 bits) 'a)
+                                (if (logbitp 8 bits) 'b)
+                                (if (logbitp 7 bits) 'c)
+                                (if (logbitp 6 bits) 'd)
+                                (If (logbitp 5 bits) 'e)))
+        (remove-if #'null (list (if (logbitp 4 bits) 'a)
+                                (if (logbitp 3 bits) 'b)
+                                (if (logbitp 2 bits) 'c)
+                                (if (logbitp 1 bits) 'd)
+                                (if (logbitp 0 bits) 'e)))))
 
 
 (defun vals->bits (vals)
@@ -109,20 +107,16 @@
          (new-fl-chips  (logxor floor-chips chips))
          (new-fl-gens   (logxor floor-gens generators)))
 
-    (flet ((count-bits (bits)
-             (loop :for i :below 5
-                   :sum (ldb (byte 1 i) bits))))
-      
-      (if (<= (+ (count-bits new-e-chips) (count-bits new-e-gens)) 2)
+    (if (<= (+ (logcount new-e-chips) (logcount new-e-gens)) 2)
 
-          (progn
-            (if (and (/= chips 0) (= chips (logand chips floor-chips)))
-                (setf (chip-bits (e-bits)) new-e-chips
-                      (chip-bits (floor-bits (e-floor))) new-fl-chips))
+        (progn
+          (if (and (/= chips 0) (= chips (logand chips floor-chips)))
+              (setf (chip-bits (e-bits)) new-e-chips
+                    (chip-bits (floor-bits (e-floor))) new-fl-chips))
 
-            (if (and (/= generators 0) (= generators (logand generators floor-gens)))
-                (setf (gen-bits (e-bits)) new-e-gens
-                      (gen-bits (floor-bits (e-floor))) new-fl-gens)))))))
+          (if (and (/= generators 0) (= generators (logand generators floor-gens)))
+              (setf (gen-bits (e-bits)) new-e-gens
+                    (gen-bits (floor-bits (e-floor))) new-fl-gens))))))
 
 (defun drop-off (&key (chips 0) (generators 0))
   (let* ((e-chips      (chip-bits (e-bits)))
@@ -234,3 +228,38 @@
           (setf (gethash *facility* *nodes*) (make-instance 'node-info
                                                             :distance (1+ prev-dist)
                                                             :prev-node prev-state))))))
+
+
+;;; Move choices rules:
+;;; 1. If moving a chip and a generator, only move matching chip and generator
+;;; 2. If multiple generators are present, you can only move a generator if its matching
+;;;    chip is not present or is being moved with the generator
+;;; 3. Chips can always be moved
+
+(defun get-next-moves ()
+  (let* ((next-moves          nil)
+         (floor-chips         (chip-bits (floor-bits (e-floor))))
+         (floor-gens          (gen-bits (floor-bits (e-floor))))
+         (num-gens            (logcount floor-gens))
+         (matching-chips-gens (logand floor-chips floor-gens))
+         (masks               '(1 2 4 8 16)))
+
+    (if (/= 0 matching-chips-gens)
+        (loop :for mask :in masks
+              :if (logtest mask matching-chips-gens)
+                :collect (list mask mask) :into moves-pairs
+              :finally (setf next-moves (append next-moves moves-pairs))))
+
+    (loop :for mask :in masks
+          :if (logtest mask floor-chips)
+            :collect (list mask nil) :into moves-chips
+          :finally (setf next-moves (append next-moves moves-chips)))
+
+    (loop :for mask :in masks
+          :when (and (= num-gens 1) (logtest mask floor-gens))
+            :collect (list nil mask) :into moves-gens
+          :when (and (> num-gens 1) (logtest mask floor-gens) (not (logtest mask floor-chips)))
+            :collect (list nil mask) :into moves-gens
+          :finally (setf next-moves (append next-moves moves-gens)))
+
+    next-moves))
