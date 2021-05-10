@@ -9,29 +9,24 @@
 
 ;;; Representing the facility state as a binary number.
 ;;; Reading left to right, the bits are:
-;;;  1-12: the state of the elevator
-;;;     - the first 2 bits are the floor number (0-based)
-;;;     - the remaining 10 bits are two sets of 5 bits.  The first set is indicates what
-;;;       microchips the elevator has; the second set indicates the generators.
-;;;       Each set of 5 bits is on/off based on if item a,b,c,d, or e is being carried.
-;;;  13-22: 10 bits representing what chips and generators are on floor 1
-;;;      - These are two sets of 5 bits, representing chips and generators as is done
-;;;        with the elevator
-;;;  23-32: 10 bits representing floor 2, similar to floor 1
-;;;  33-42: 10 bits representing floor 3, similar to floor 1
-;;;  43-52: 10 bits representing floor 4, similar to floor 1
+;;;  1-2:  the first 2 bits are the floor number (0-based)
+;;;  3-12: 10 bits representing what chips and generators are on floor 1
+;;;      - These are two sets of 5 bits, representing chips and generators,
+;;;        each bit represents a single chip/generator, bits 11111 = abcde.
+;;;  13-22: 10 bits representing floor 2, similar to floor 1
+;;;  23-32: 10 bits representing floor 3, similar to floor 1
+;;;  33-42: 10 bits representing floor 4, similar to floor 1
 
-(defparameter *facility* #b0000000000001000010000000000111101111000000000000000)
-(defparameter *facility* #b001000010000000000111101111000000000000000)
+(defparameter *part1-facility* #b001000010000000000111101111000000000000000)
+(defparameter *test-facility*  #b001100000000000001000000000010000000000000)
+(defparameter *facility* *part1-facility*)
+(defparameter *end-goal* #b0000000000000000000000000000001111111111) ;; floor position is not included
 
-(defmacro e-floor ()
-  `(ldb (byte 2 50) *facility*))
+(defmacro e-floor (facility)
+  `(ldb (byte 2 40) ,facility))
 
-(defmacro e-bits ()
-  `(ldb (byte 10 40) *facility*))
-
-(defmacro floor-bits (floor-num)
-  `(ldb (byte 10 (- 30 (* 10 ,floor-num))) *facility*))
+(defmacro floor-bits (floor-num facility)
+  `(ldb (byte 10 (- 30 (* 10 ,floor-num))) ,facility))
 
 (defmacro chip-bits (bits)
   `(ldb (byte 5 5) ,bits))
@@ -62,87 +57,32 @@
                   ((eq val 'e) (setf bits (logior bits #b00001))))
         :finally (return bits))  )
 
-(defun display-state (&optional (facility *facility*))
-  (let ((*facility* facility))
-    (loop :with e-floor = (e-floor)
-          :with e-vals  = (bits->vals (e-bits))
-          :for i :downfrom 3 :to 0
-          :for floor-vals = (bits->vals (floor-bits i))
-          :do (if (= e-floor i)
-                  (format t "Floor: ~a,* chips: ~a, generators: ~a, **Elevator: chips: ~a, generators: ~a~%"
-                          (1+ i) (first floor-vals) (second floor-vals) (first e-vals) (second e-vals))
-                  (format t "Floor: ~a,  chips: ~a, generators: ~a~%"
-                          (1+ i) (first floor-vals) (second floor-vals))))))
+(defun display-state (facility)
+  (loop :with e-floor = (e-floor facility)
+        :for i :downfrom 3 :to 0
+        :for floor-vals = (bits->vals (floor-bits i facility))
+        :do (format t "Floor: ~a,~a chips: ~a, generators: ~a~%"
+                    (1+ i) (if (= e-floor i) "*" " ") (first floor-vals) (second floor-vals))))
 
-(defun change-floor (direction &optional (facility *facility*))
-  (let ((*facility* facility)
-        (current-floor (e-floor)))
-    (cond ((and (eq direction 'up) (< current-floor 3)) (setf (e-floor) (1+ current-floor)))
-          ((and (eq direction 'down) (> current-floor 0)) (setf (e-floor) (1- current-floor))))
-    *facility*))
+(defun change-floor (direction facility)
+  (let ((current-floor (e-floor facility)))
+    (cond ((and (eq direction 'up) (< current-floor 3)) (setf (e-floor facility) (1+ current-floor)))
+          ((and (eq direction 'down) (> current-floor 0)) (setf (e-floor facility) (1- current-floor))))
+    facility))
 
-(defun is-safe-p (&optional (facility *facility*))
-  (let ((*facility* facility))
-    (loop :with safe = t
-          :for i :from 0 :to 3
-          :do (let ((chips (if (= (e-floor) i )
-                               (logand (chip-bits (e-bits)) (chip-bits (floor-bits i)))
-                               (chip-bits (floor-bits i))))
-                    (gens  (if (= (e-floor) i)
-                               (logand (gen-bits (e-bits)) (gen-bits (floor-bits i)))
-                               (gen-bits (floor-bits i)))))
-                (if (not (or (= chips 0)
-                             (= gens 0)
-                             (= chips (logand chips gens))))
-                    (setf safe nil)))
-          :finally (return safe))))
-
-(defun pick-up (&key (facility *facility*) (chips 0) (generators 0))
-  (let* ((*facility*    facility)
-         (floor-chips   (chip-bits (floor-bits (e-floor))))
-         (floor-gens    (gen-bits (floor-bits (e-floor))))
-         (new-e-chips   (logior (chip-bits (e-bits)) chips))
-         (new-e-gens    (logior (gen-bits (e-bits)) generators))
-         (new-fl-chips  (logxor floor-chips chips))
-         (new-fl-gens   (logxor floor-gens generators)))
-
-    (if (<= (+ (logcount new-e-chips) (logcount new-e-gens)) 2)
-
-        (progn
-          (if (and (/= chips 0) (= chips (logand chips floor-chips)))
-              (setf (chip-bits (e-bits)) new-e-chips
-                    (chip-bits (floor-bits (e-floor))) new-fl-chips))
-
-          (if (and (/= generators 0) (= generators (logand generators floor-gens)))
-              (setf (gen-bits (e-bits)) new-e-gens
-                    (gen-bits (floor-bits (e-floor))) new-fl-gens))))
-
-    *facility*))
-
-(defun drop-off (&key (facility *facility*) (chips 0) (generators 0))
-  (let* ((*facility*   facility)
-         (e-chips      (chip-bits (e-bits)))
-         (e-gens       (gen-bits (e-bits)))
-         (new-e-chips  (logxor e-chips chips))
-         (new-e-gens   (logxor e-gens generators))
-         (new-fl-chips (logior (chip-bits (floor-bits (e-floor))) chips))
-         (new-fl-gens  (logior (gen-bits (floor-bits (e-floor))) generators)))
-
-    (if (and (/= chips 0) (= chips (logand chips e-chips)))
-        (setf (chip-bits (floor-bits (e-floor))) new-fl-chips
-              (chip-bits (e-bits)) new-e-chips))
-
-    (if (and (/= generators 0) (= generators (logand generators e-gens)))
-        (setf (gen-bits (floor-bits (e-floor))) new-fl-gens
-              (gen-bits (e-bits)) new-e-gens))
-
-    *facility*))
+(defun is-safe-p (facility)
+  (loop :with safe = t
+        :for i :from 0 :to 3
+        :do (let ((chips (chip-bits (floor-bits i facility)))
+                  (gens  (gen-bits (floor-bits i facility))))
+              (if (not (or (= chips 0)
+                           (= gens 0)
+                           (= chips (logand chips gens))))
+                  (setf safe nil)))
+        :finally (return safe)))
 
 (defun print-bits (n size)
-  (format t "~v,'0b" size (ldb (byte size 0) n)))
-
-
-
+  (format t "~v,'0b~%" size (ldb (byte size 0) n)))
 
 
 ;;; ***** Breadth-first search *****
@@ -201,42 +141,52 @@
 ;;; **** end of queue implementation ****
 
 (defclass node-info ()
-  ((distance :initform 0)
-   (prev-node :initform nil)))
+  ((distance :initarg :distance :initform 0)
+   (prev-node :initarg :prev-node :initform nil)))
 
 (defparameter *nodes* (make-hash-table))
 
-(defun reset ()
-  (setf *facility* #b0000000000001000010000000000111101111000000000000000)
+(defun reset (facility)
+  (setf *facility* facility)
   (clrhash *nodes*)
-  (setf (gethash *facility* *nodes*) (make-instance 'node-info))
+  (setf (gethash facility *nodes*) (make-instance 'node-info))
   (setf *queue* (make-instance 'queue))
-  (enqueue *facility* *queue*))
+  (enqueue facility *queue*))
 
-;; This move function is mostly correct, but I need to review how I am using the global *facility* in this code.  I need to
-;; ensure that *facility* really does contain the true previous state for this given call.
+;;
+;; I rewrote this function to eliminate calls to pick-up and drop-off.  Also, I no longer use
+;; *facility* during this function's execution.  Need to test this carefully.
+;; NOTE: This function blindly accepts whatever is passed for chips and generators.  It relies
+;; on the calling function to make valid requests.  My get-next-moves function will ensure
+;; this is the case.
+;;
 (defun move (direction &key (facility *facility*) (chips 0) (generators 0))
-  (let ((*facility* facility)
-        (prev-state *facility*))
-    
-    (pick-up :chips chips :generators generators)
-    (change-floor direction)
-    (drop-off :chips chips :generators generators)
+  (let* ((prev-state    facility)
+         (new-state     (change-floor direction facility))
+         (prev-floor    (e-floor prev-state))
+         (new-floor     (e-floor new-state)))
 
-    (if (or (not (is-safe-p))
-            (gethash *facility* *nodes*))
-        (setf *facility* prev-state))
+    (if (/= new-floor prev-floor)
+        (let* ((prev-chips   (chip-bits (floor-bits prev-floor new-state)))
+               (prev-gens    (gen-bits (floor-bits prev-floor new-state)))
+               (new-chips    (chip-bits (floor-bits new-floor new-state)))
+               (new-gens     (gen-bits (floor-bits new-floor new-state))))
 
-    (if (not (gethash *facility* *nodes*))
-        (let* ((prev-info (gethash prev-state *nodes*))
-               (prev-dist (slot-value prev-info 'distance)))
-          (enqueue *facility* *queue*)
-          (setf (gethash *facility* *nodes*) (make-instance 'node-info
-                                                            :distance (1+ prev-dist)
-                                                            :prev-node prev-state))))
+          (setf (chip-bits (floor-bits new-floor new-state)) (logior new-chips chips)
+                (gen-bits (floor-bits new-floor new-state)) (logior new-gens generators)
+                (chip-bits (floor-bits prev-floor new-state)) (logxor prev-chips chips)
+                (gen-bits (floor-bits prev-floor new-state)) (logxor prev-gens generators))
 
-    *facility*))
+          (cond ((not (is-safe-p new-state)) (setf new-state prev-state))
+                ((gethash new-state *nodes*) (setf new-state prev-state))
+                (t (let* ((prev-info (gethash prev-state *nodes*))
+                          (prev-dist (slot-value prev-info 'distance)))
+                     (enqueue new-state *queue*)
+                     (setf (gethash new-state *nodes*) (make-instance 'node-info
+                                                                      :distance (1+ prev-dist)
+                                                                      :prev-node prev-state)))))))
 
+    new-state))
 
 ;;; Move choices rules:
 ;;; 1. If moving a chip and a generator, only move matching chip and generator
@@ -244,26 +194,29 @@
 ;;;    chip is not present or is being moved with the generator
 ;;; 3. Chips can always be moved
 
-(defun get-next-moves (&optional (facility *facility*))
-  (let* ((*facility*          facility)
+(defun get-next-moves (facility)
+  (let* ((facility-floor      (e-floor facility))
          (next-moves          nil)
-         (floor-chips         (chip-bits (floor-bits (e-floor))))
-         (floor-gens          (gen-bits (floor-bits (e-floor))))
+         (floor-chips         (chip-bits (floor-bits facility-floor facility)))
+         (floor-gens          (gen-bits (floor-bits facility-floor facility)))
          (num-gens            (logcount floor-gens))
          (matching-chips-gens (logand floor-chips floor-gens))
          (masks               '(1 2 4 8 16)))
 
+    ;; matching chips and gens
     (if (/= 0 matching-chips-gens)
         (loop :for mask :in masks
               :if (logtest mask matching-chips-gens)
                 :collect (list mask mask) :into moves-pairs
               :finally (setf next-moves (append next-moves moves-pairs))))
 
+    ;; single chips
     (loop :for mask :in masks
           :if (logtest mask floor-chips)
             :collect (list mask 0) :into moves-chips
           :finally (setf next-moves (append next-moves moves-chips)))
 
+    ;; single gens
     (loop :for mask :in masks
           :when (and (= num-gens 1) (logtest mask floor-gens))
             :collect (list 0 mask) :into moves-gens
@@ -271,12 +224,21 @@
             :collect (list 0 mask) :into moves-gens
           :finally (setf next-moves (append next-moves moves-gens)))
 
+    ;; find pairs
+    (flet ((find-pairs (bits &key (chips t))
+             (loop :for mask :in '(3 5 6 9 10 12 17 18 20 24)
+                   :if (= (logand bits mask) mask)
+                     :collect (if chips (list mask 0) (list 0 mask)) :into moves-pairs
+                   :finally (setf next-moves (append next-moves moves-pairs)))))
+
+      (find-pairs floor-chips)
+      (find-pairs floor-gens :chips nil))    
+    
     next-moves))
 
-(defun end-state-p (&optional facility)
-  (let ((*facility* facility)
-        (end-goal   #b1100000000000000000000000000000000000000001111111111))
-    (= *facility* end-goal)))
+(defun end-state-p (facility)
+  (let ((facility-state (ldb (byte 40 0) facility)))
+    (= facility-state *end-goal*)))
 
 ;;; Needs much testing!
 ;;; I also think I could eliminate the elevator chips and generator bits.  Consider reworking this to do that.
@@ -287,19 +249,28 @@
 (defun process-queue ()
   (flet ((report-end (node)
            (format t "End state found! Facility: ~a, steps: ~a~%"
-                                    (print-bits node 52)
-                                    (slot-value (gethash node *nodes*) 'distance))))
+                   node
+                   (slot-value (gethash node *nodes*) 'distance))))
+    
     (loop :named find-end
           :for node = (dequeue *queue*)
           :while node
           :for next-moves = (get-next-moves node)
           :do (loop :for next-move :in next-moves
-                    :for (chips generators) :in next-move
-                    :if (end-state-p (move 'up :facility node :chips chips :generators generators))
-                      :do (return-from find-end (report-end node))
-                    :if (end-state-p (move 'down :facility node :chips chips :generators generators))
-                      :do (return-from find-end (report-end node))))))
+                    :for (chips generators) = next-move
+                    :do (let ((move-up-state   (move 'up :facility node :chips chips :generators generators))
+                              (move-down-state (move 'down :facility node :chips chips :generators generators)))
+                          (if (end-state-p move-up-state)
+                              (return-from find-end (report-end move-up-state)))
+                          (if (end-state-p move-down-state)
+                              (return-from find-end (report-end move-down-state))))))))
+
+(defun test-part1 ()
+  (reset *test-facility*)
+  (setf *end-goal* #b0000000000000000000000000000001100011000)  
+  (process-queue))
 
 (defun part1 ()
-  (reset)
+  (reset *part1-facility*)
+  (setf *end-goal* #b0000000000000000000000000000001111111111)
   (process-queue))
