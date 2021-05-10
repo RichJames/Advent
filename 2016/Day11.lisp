@@ -47,16 +47,6 @@
                                 (if (logbitp 0 bits) 'e)))))
 
 
-(defun vals->bits (vals)
-  (loop :with bits = 0
-        :for val :in vals
-        :do (cond ((eq val 'a) (setf bits (logior bits #b10000)))
-                  ((eq val 'b) (setf bits (logior bits #b01000)))
-                  ((eq val 'c) (setf bits (logior bits #b00100)))
-                  ((eq val 'd) (setf bits (logior bits #b00010)))
-                  ((eq val 'e) (setf bits (logior bits #b00001))))
-        :finally (return bits))  )
-
 (defun display-state (facility)
   (loop :with e-floor = (e-floor facility)
         :for i :downfrom 3 :to 0
@@ -153,13 +143,11 @@
   (setf *queue* (make-instance 'queue))
   (enqueue facility *queue*))
 
-;;
-;; I rewrote this function to eliminate calls to pick-up and drop-off.  Also, I no longer use
-;; *facility* during this function's execution.  Need to test this carefully.
+
 ;; NOTE: This function blindly accepts whatever is passed for chips and generators.  It relies
 ;; on the calling function to make valid requests.  My get-next-moves function will ensure
 ;; this is the case.
-;;
+
 (defun move (direction &key (facility *facility*) (chips 0) (generators 0))
   (let* ((prev-state    facility)
          (new-state     (change-floor direction facility))
@@ -239,12 +227,6 @@
 (defun end-state-p (facility)
   (let ((facility-state (ldb (byte 40 0) facility)))
     (= facility-state *end-goal*)))
-
-;;; Needs much testing!
-;;; I also think I could eliminate the elevator chips and generator bits.  Consider reworking this to do that.
-;;; The elevator really just servers as an index to what is the current floor.  This controls what can move.
-;;; The capacity of the elevator is really just movement rules, so I don't need to literally put things on
-;;; an "elevator" in order to move them to a different floor.
 
 (defun process-queue ()
   (flet ((report-end (node)
