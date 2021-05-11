@@ -256,3 +256,91 @@
   (reset *part1-facility*)
   (setf *end-goal* #b0000000000000000000000000000001111111111)
   (process-queue))
+
+;;; ***** Part 2 *****
+
+;;; There are two more chips/generator combinations.  I think the object here is to assume that we start with the same initial
+;;; state, but also add these two items to the first floor, then solve.
+
+(defparameter *part2-facility* #b0010000111000011000000001111000111100000000000000000000000)
+(defparameter *part2-end-goal* #b00000000000000000000000000000000000000000011111111111111)
+
+(defmacro e-floor (facility)
+  `(ldb (byte 2 56) ,facility))
+
+(defmacro floor-bits (floor-num facility)
+  `(ldb (byte 14 (- 42 (* 14 ,floor-num))) ,facility))
+
+(defmacro chip-bits (bits)
+  `(ldb (byte 7 7) ,bits))
+
+(defmacro gen-bits (bits)
+  `(ldb (byte 7 0) ,bits))
+
+(defun bits->vals (bits)
+  (list (remove-if #'null (list (if (logbitp 13 bits) 'a)
+                                (if (logbitp 12 bits) 'b)
+                                (if (logbitp 11 bits) 'c)
+                                (if (logbitp 10 bits) 'd)
+                                (if (logbitp  9 bits) 'e)
+                                (if (logbitp  8 bits) 'f)
+                                (if (logbitp  7 bits) 'g)))
+        (remove-if #'null (list (if (logbitp  6 bits) 'a)
+                                (if (logbitp  5 bits) 'b)
+                                (if (logbitp  4 bits) 'c)
+                                (if (logbitp  3 bits) 'd)
+                                (if (logbitp  2 bits) 'e)
+                                (if (logbitp  1 bits) 'f)
+                                (if (logbitp  0 bits) 'g)))))
+
+
+(defun get-next-moves (facility)
+  (let* ((facility-floor      (e-floor facility))
+         (next-moves          nil)
+         (floor-chips         (chip-bits (floor-bits facility-floor facility)))
+         (floor-gens          (gen-bits (floor-bits facility-floor facility)))
+         (num-gens            (logcount floor-gens))
+         (matching-chips-gens (logand floor-chips floor-gens))
+         (masks               '(1 2 4 8 16 32 64)))
+
+    ;; matching chips and gens
+    (if (/= 0 matching-chips-gens)
+        (loop :for mask :in masks
+              :if (logtest mask matching-chips-gens)
+                :collect (list mask mask) :into moves-pairs
+              :finally (setf next-moves (append next-moves moves-pairs))))
+
+    ;; single chips
+    (loop :for mask :in masks
+          :if (logtest mask floor-chips)
+            :collect (list mask 0) :into moves-chips
+          :finally (setf next-moves (append next-moves moves-chips)))
+
+    ;; single gens
+    (loop :for mask :in masks
+          :when (and (= num-gens 1) (logtest mask floor-gens))
+            :collect (list 0 mask) :into moves-gens
+          :when (and (> num-gens 1) (logtest mask floor-gens) (not (logtest mask floor-chips)))
+            :collect (list 0 mask) :into moves-gens
+          :finally (setf next-moves (append next-moves moves-gens)))
+
+    ;; find pairs
+    (flet ((find-pairs (bits &key (chips t))
+             (loop :for mask :in '(3 5 6 9 10 12 17 18 20 24 33 34 36 40 48 65 66 68 72 80 96)
+                   :if (= (logand bits mask) mask)
+                     :collect (if chips (list mask 0) (list 0 mask)) :into moves-pairs
+                   :finally (setf next-moves (append next-moves moves-pairs)))))
+
+      (find-pairs floor-chips)
+      (find-pairs floor-gens :chips nil))    
+    
+    next-moves))
+
+(defun end-state-p (facility)
+  (let ((facility-state (ldb (byte 56 0) facility)))
+    (= facility-state *end-goal*)))
+
+(defun part2 ()
+  (reset *part2-facility*)
+  (setf *end-goal* *part2-end-goal*)
+  (process-queue))
