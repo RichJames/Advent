@@ -69,3 +69,12 @@
   (reset)
   (load-instructions)
   (process-instructions))
+
+;;; ***** Part 2 *****
+
+(defun part2 ()
+  (reset)
+  (setf (cdr (assoc 'c *registers*)) 1)
+  (load-instructions)
+  (process-instructions))
+
