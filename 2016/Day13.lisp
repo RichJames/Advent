@@ -119,3 +119,27 @@
   (setf *favorite-number* 1358
         *target*          '(31 39))
   (process-queue))
+
+;;; ***** Part 2 *****
+
+(defun get-neighbor-nodes-part2 (from)
+  (if (< (slot-value (gethash from *nodes*) 'distance) 50)
+      (let ((right  (if (> (first from) 0) (list (1- (first from)) (second from))))
+            (left   (list (1+ (first from)) (second from)))
+            (up     (if (> (second from) 0)  (list (first from) (1- (second from)))))
+            (down   (list (first from) (1+ (second from)))))
+
+        (remove-if #'(lambda (x) (is-wall-p (first x) (second x))) (remove-if #'null (list right left up down))))))
+
+(defun process-queue-part2 ()
+  (loop :for node = (dequeue *queue*)
+        :while node
+        :for neighbors = (get-neighbor-nodes-part2 node)
+        :do (loop :for neighbor :in neighbors
+                  :do (record-space :from node :to neighbor))
+        :finally (format t "Numbers of spaces within 50 steps: ~a~%" (hash-table-count *nodes*))))
+
+(defun part2 ()
+  (reset)
+  (setf *favorite-number* 1358)
+  (process-queue-part2))
