@@ -12,9 +12,8 @@
 (defparameter *target* '(31 39))
 
 (defun is-wall-p (x y)
-  (let* ((step1    (+ (* x x) (* x 3) (* 2 x y) y (* y y)))
-         (step2    (+ step1 *favorite-number*))
-         (num-bits (logcount step2)))
+  (let* ((number (+ (* x x) (* x 3) (* 2 x y) y (* y y) *favorite-number*))
+         (num-bits (logcount number)))
     (oddp num-bits)))
 
 (defun is-space-p (x y)
@@ -32,7 +31,7 @@
                     :do (format t "~a" (if (is-wall-p c r) "#" "."))
                     :finally (format t "~%")))))
 
-;;; ***** Breadth-first search again, I guess. *****
+;;; ***** Breadth-first search *****
 
 ;;; **** queue implementations from Common Lisp Recipes ****
 (defclass queue ()
