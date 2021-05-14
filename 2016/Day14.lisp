@@ -57,3 +57,13 @@
   (setf *input* "abc")
   (find-keys))
 
+;;; ***** Part 2 *****
+
+(defun md5hash (number)
+  (declare (fixnum number))
+  (let ((input (concatenate 'string *input* (format nil "~d" number))))
+    (loop :for hash = (md5-calc input) :then (md5-calc hash)
+          :repeat 2016
+          :finally (return hash))))
+
+;;; Re-run part1 or test-part1 after compiling the above function to get the stretched hash answers.
