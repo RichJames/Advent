@@ -33,3 +33,9 @@
 
 (defun part1 ()
   (find-aligned-slots))
+
+;;; ***** Part 2 *****
+
+(defparameter *discs* #((13 1) (19 10) (3 2) (7 1) (5 3) (17 5) (11 0)))
+
+;;; Re-run part1() after compiling the new *discs* definition above to get the answer.
