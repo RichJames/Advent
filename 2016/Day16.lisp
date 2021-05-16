@@ -43,3 +43,8 @@
 
 (defun part1 ()
   (find-checksum *input* 272))
+
+;;; ***** Part 2 *****
+
+(defun part2 ()
+  (find-checksum *input* 35651584))
