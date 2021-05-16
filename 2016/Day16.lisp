@@ -25,7 +25,7 @@
 
 (defun compute-checksum (data)
   (loop :for i :from 0 :below (length data) :by 2
-    :for first-char = (elt data i)
+        :for first-char = (elt data i)
         :for second-char = (elt data (1+ i))
         :if (equal first-char second-char)
           :collect #\1 :into checksum
