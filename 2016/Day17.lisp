@@ -113,4 +113,18 @@
   (reset)
   (process-queue))
 
+;;; ***** Part 2 *****
 
+(defun process-queue-part2 ()
+  (loop :for node = (dequeue *queue*)
+        :while node
+        :if (at-vault-p node)
+          :collect (subseq node (length *input*)) :into paths-to-vault
+        :else
+          :do (loop :for door :in (get-open-doors node)
+                    :do (record-node :from node :to door))
+        :finally (return (length (nth (1- (length paths-to-vault)) paths-to-vault)))))
+
+(defun part2 ()
+  (reset)
+  (process-queue-part2))
