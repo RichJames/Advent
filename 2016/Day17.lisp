@@ -65,8 +65,7 @@
 
 (defun get-open-doors (node)
   (let* ((hash       (md5-calc node))
-         (node-info  (gethash node *nodes*))
-         (position   (slot-value node-info 'position))
+         (position   (slot-value (gethash node *nodes*) 'position))
          (open-doors (loop :for i :below 4
                            :if (member (elt hash i) '(#\b #\c #\d #\e #\f))
                              :collect t :into doors
@@ -82,8 +81,7 @@
                 (if (and (fourth open-doors) (< (first  position) 3)) "R")))))
 
 (defun record-node (&key from to)
-  (let* ((prev-info     (gethash from *nodes*))
-         (prev-position (slot-value prev-info 'position))
+  (let* ((prev-position (slot-value (gethash from *nodes*) 'position))
          (new-node       (concatenate 'string from to))
          (new-position   (cond ((string= to "U") (list (first prev-position) (1- (second prev-position))))
                                ((string= to "D") (list (first prev-position) (1+ (second prev-position))))
@@ -96,8 +94,7 @@
                                                     :position new-position))))
 
 (defun at-vault-p (node)
-  (let* ((node-info      (gethash node *nodes*))
-         (node-position  (slot-value node-info 'position)))
+  (let* ((node-position  (slot-value (gethash node *nodes*) 'position)))
     (equal node-position *vault*)))
 
 (defun process-queue ()
