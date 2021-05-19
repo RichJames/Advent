@@ -123,8 +123,10 @@
         :else
           :do (loop :for door :in (get-open-doors node)
                     :do (record-node :from node :to door))
-        :finally (return (length (nth (1- (length paths-to-vault)) paths-to-vault)))))
+        :finally (return (length (car (last paths-to-vault))))))
 
 (defun part2 ()
   (reset)
   (process-queue-part2))
+
+
