@@ -1,11 +1,11 @@
 ;;;;
-;;;;  Advent of Code 2017
-;;;;     Day 17
+;;;;  Advent of Code 2016
+;;;;     Day 18
 
-(defpackage #:2016Day17
+(defpackage #:2016Day18
   (:use #:cl))
 
-(in-package #:2016Day17)
+(in-package #:2016Day18)
 
 (defparameter *input* ".^^.^^^..^.^..^.^^.^^^^.^^.^^...^..^...^^^..^^...^..^^^^^^..^.^^^..^.^^^^.^^^.^...^^^.^^.^^^.^.^^.^.")
 (defparameter *num-rows* 40)
