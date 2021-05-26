@@ -60,7 +60,8 @@
   (loop :with num-elves = (length *elves*)
         :with start = 0
         :with mid   = (floor (/ num-elves 2))
-        :for i :below num-elves
+        :for i :upfrom 0
+        :while (/= start mid)
         :do (progn
               (delete-elf mid)
               (setf mid (next-elf mid))
