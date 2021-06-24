@@ -74,10 +74,47 @@
   (cond ((null instructions) string)
         (t (generate-password (execute-instruction string (car instructions)) (cdr instructions)))))
 
-(defun part1 ()
-  (generate-password "abcdefgh" (load-instructions "~/quicklisp/local-projects/rich/advent/2016/Day21.txt")))
+(defun part1 (&optional (password "abcdefgh"))
+  (generate-password password (load-instructions "~/quicklisp/local-projects/rich/advent/2016/Day21.txt")))
 
+;;; ***** Part 2 *****
 
+(defun part2 ()
+  (descramble-password "fbgdceah" (reverse (load-instructions "~/quicklisp/local-projects/rich/advent/2016/Day21.txt"))))
 
+(defun descramble-password (string instructions)
+  (cond ((null instructions) string)
+        (t (descramble-password (execute-rev-instruction string (car instructions)) (cdr instructions)))))
 
+(defun execute-rev-instruction (string instruction)
+  (cond ((null instruction)                            nil)
+        ((string= (elt instruction 0) "move")          (rev-move string (elt instruction 1) (elt instruction 2)))
+        ((string= (elt instruction 0) "swap position") (rev-swap-position string (elt instruction 1) (elt instruction 2)))
+        ((string= (elt instruction 0) "swap letter")   (rev-swap-letters string (elt instruction 1) (elt instruction 2)))
+        ((string= (elt instruction 0) "reverse")       (rev-rev string (elt instruction 1) (elt instruction 2)))
+        ((string= (elt instruction 0) "rotate based")  (rev-rotate-based string (elt instruction 1)))
+        ((string= (elt instruction 0) "rotate")        (rev-rotate string (elt instruction 2) :left (string= (elt instruction 1) "left")))))
+
+(defun rev-swap-position (str x y)
+  (swap-position str y x))
+
+(defun rev-swap-letters (str x y)
+  (swap-letters str y x))
+
+(defun rev-rotate (str s &key left)
+  (let ((shift (mod (parse-integer s) (length str))))
+    (if left
+        (concatenate 'string (subseq str (- (length str) shift)) (subseq str 0 (- (length str) shift)))
+        (concatenate 'string (subseq str shift) (subseq str 0 shift)))))
+
+(defun rev-rotate-based (str x)
+  (let ((shifts (list 1 1 6 2 7 3 0 4))
+        (pos    (position (coerce x 'character) str)))
+    (rev-rotate str (write-to-string (nth pos shifts)))))
+
+(defun rev-rev (str x y)
+  (rev str x y))
+
+(defun rev-move (str x y)
+  (move str y x))
 
