@@ -12,6 +12,7 @@
        (second (multiple-value-list (ppcre:scan-to-strings
                                      "node-x([0-9]+)-y([0-9]+)[\\s]+([0-9]+)T[\\s]+([0-9]+)T[\\s]+([0-9]+)T[\\s]+([0-9]+)%"
                                      node-df)))))
+
 (defun load-disk-usage (file)
   (with-open-file (stream file)
 
@@ -23,7 +24,7 @@
                 (if (> (first node-df) largest-x) (setf largest-x (first node-df)))
                 (if (> (second node-df) largest-y) (setf largest-y (second node-df))))
           :collect node-df :into df-output
-          :finally (let ((node-array (make-array `(,(1+ largest-x) ,(1+ largest-y)))))
+          :finally (let ((node-array (make-array (list (1+ largest-x) (1+ largest-y)))))
                      (loop :for node :in df-output
                            :do (setf (aref node-array (first node) (second node)) (cddr node))
                            :finally (return-from outer node-array))))))
