@@ -32,9 +32,9 @@
 (defun count-viables (node-array)
   (loop :with flat-node-array = (make-array (array-total-size node-array) :displaced-to node-array)
         :with viable-nodes = 0
-        :for i :below (first (array-dimensions flat-node-array))
+        :for i :below (car (array-dimensions flat-node-array))
         :for node-i = (aref flat-node-array i)
-        :do (loop :for j :below (first (array-dimensions flat-node-array))
+        :do (loop :for j :below (car (array-dimensions flat-node-array))
                   :for node-j = (aref flat-node-array j)
                   :if (and (/= i j)
                            (> (second node-i) 0)
