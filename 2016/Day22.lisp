@@ -30,7 +30,7 @@
                            :finally (return-from outer node-array))))))
 
 (defun count-viables (node-array)
-  (loop :with flat-node-array = (make-array (apply #'* (array-dimensions node-array)) :displaced-to node-array)
+  (loop :with flat-node-array = (make-array (array-total-size node-array) :displaced-to node-array)
         :with viable-nodes = 0
         :for i :below (first (array-dimensions flat-node-array))
         :for node-i = (aref flat-node-array i)
